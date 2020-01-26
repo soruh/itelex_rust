@@ -117,7 +117,7 @@ pub const LENGTH_TYPE_10: usize = 41;
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct Package1 {
+pub struct ClientUpdate {
     pub number: u32,
     pub pin: u16,
     pub port: u16,
@@ -126,14 +126,14 @@ pub struct Package1 {
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct Package2 {
+pub struct AddressConfirm {
     pub ipaddress: Ipv4Addr,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct Package3 {
+pub struct PeerQuery {
     pub number: u32,
     pub version: u8,
 }
@@ -141,12 +141,12 @@ pub struct Package3 {
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct Package4 {}
+pub struct PeerNotFound {}
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct Package5 {
+pub struct PeerReply {
     pub number: u32,
     pub name: String,
     pub flags: u16,
@@ -159,7 +159,7 @@ pub struct Package5 {
     pub timestamp: u32, // TODO
 }
 
-impl Package5 {
+impl PeerReply {
     pub fn extension_as_str(&self) -> anyhow::Result<String> {
         Ok(match self.extension {
             0 => "-".into(),
@@ -190,7 +190,7 @@ impl Package5 {
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct Package6 {
+pub struct FullQuery {
     pub version: u8,
     pub server_pin: u32,
 }
@@ -198,7 +198,7 @@ pub struct Package6 {
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct Package7 {
+pub struct Login {
     pub version: u8,
     pub server_pin: u32,
 }
@@ -206,17 +206,17 @@ pub struct Package7 {
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct Package8 {}
+pub struct Acknowledge {}
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct Package9 {}
+pub struct EndOfList {}
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct Package10 {
+pub struct PeerSearch {
     pub version: u8,
     pub pattern: String,
 }
@@ -224,11 +224,11 @@ pub struct Package10 {
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct Package255 {
+pub struct Error {
     pub message: String,
 }
 
-impl TryFrom<&[u8]> for Package1 {
+impl TryFrom<&[u8]> for ClientUpdate {
     type Error = anyhow::Error;
 
     fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
@@ -244,7 +244,7 @@ impl TryFrom<&[u8]> for Package1 {
     }
 }
 
-impl TryFrom<&[u8]> for Package2 {
+impl TryFrom<&[u8]> for AddressConfirm {
     type Error = anyhow::Error;
 
     fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
@@ -262,7 +262,7 @@ impl TryFrom<&[u8]> for Package2 {
     }
 }
 
-impl TryFrom<&[u8]> for Package3 {
+impl TryFrom<&[u8]> for PeerQuery {
     type Error = anyhow::Error;
 
     fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
@@ -277,7 +277,7 @@ impl TryFrom<&[u8]> for Package3 {
     }
 }
 
-impl TryFrom<&[u8]> for Package4 {
+impl TryFrom<&[u8]> for PeerNotFound {
     type Error = anyhow::Error;
 
     #[allow(clippy::absurd_extreme_comparisons)]
@@ -290,7 +290,7 @@ impl TryFrom<&[u8]> for Package4 {
     }
 }
 
-impl TryFrom<&[u8]> for Package5 {
+impl TryFrom<&[u8]> for PeerReply {
     type Error = anyhow::Error;
 
     fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
@@ -331,7 +331,7 @@ impl TryFrom<&[u8]> for Package5 {
     }
 }
 
-impl TryFrom<&[u8]> for Package6 {
+impl TryFrom<&[u8]> for FullQuery {
     type Error = anyhow::Error;
 
     fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
@@ -346,7 +346,7 @@ impl TryFrom<&[u8]> for Package6 {
     }
 }
 
-impl TryFrom<&[u8]> for Package7 {
+impl TryFrom<&[u8]> for Login {
     type Error = anyhow::Error;
 
     fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
@@ -361,7 +361,7 @@ impl TryFrom<&[u8]> for Package7 {
     }
 }
 
-impl TryFrom<&[u8]> for Package8 {
+impl TryFrom<&[u8]> for Acknowledge {
     type Error = anyhow::Error;
 
     #[allow(clippy::absurd_extreme_comparisons)]
@@ -374,7 +374,7 @@ impl TryFrom<&[u8]> for Package8 {
     }
 }
 
-impl TryFrom<&[u8]> for Package9 {
+impl TryFrom<&[u8]> for EndOfList {
     type Error = anyhow::Error;
 
     #[allow(clippy::absurd_extreme_comparisons)]
@@ -387,7 +387,7 @@ impl TryFrom<&[u8]> for Package9 {
     }
 }
 
-impl TryFrom<&[u8]> for Package10 {
+impl TryFrom<&[u8]> for PeerSearch {
     type Error = anyhow::Error;
 
     fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
@@ -402,7 +402,7 @@ impl TryFrom<&[u8]> for Package10 {
     }
 }
 
-impl TryFrom<&[u8]> for Package255 {
+impl TryFrom<&[u8]> for Error {
     type Error = anyhow::Error;
 
     fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
@@ -412,7 +412,7 @@ impl TryFrom<&[u8]> for Package255 {
     }
 }
 
-impl TryInto<Vec<u8>> for Package1 {
+impl TryInto<Vec<u8>> for ClientUpdate {
     type Error = anyhow::Error;
 
     fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
@@ -426,7 +426,7 @@ impl TryInto<Vec<u8>> for Package1 {
     }
 }
 
-impl TryInto<Vec<u8>> for Package2 {
+impl TryInto<Vec<u8>> for AddressConfirm {
     type Error = anyhow::Error;
 
     fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
@@ -438,7 +438,7 @@ impl TryInto<Vec<u8>> for Package2 {
     }
 }
 
-impl TryInto<Vec<u8>> for Package3 {
+impl TryInto<Vec<u8>> for PeerQuery {
     type Error = anyhow::Error;
 
     fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
@@ -452,7 +452,7 @@ impl TryInto<Vec<u8>> for Package3 {
     }
 }
 
-impl TryInto<Vec<u8>> for Package4 {
+impl TryInto<Vec<u8>> for PeerNotFound {
     type Error = anyhow::Error;
 
     fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
@@ -460,7 +460,7 @@ impl TryInto<Vec<u8>> for Package4 {
     }
 }
 
-impl TryInto<Vec<u8>> for Package5 {
+impl TryInto<Vec<u8>> for PeerReply {
     type Error = anyhow::Error;
 
     fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
@@ -481,7 +481,7 @@ impl TryInto<Vec<u8>> for Package5 {
     }
 }
 
-impl TryInto<Vec<u8>> for Package6 {
+impl TryInto<Vec<u8>> for FullQuery {
     type Error = anyhow::Error;
 
     fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
@@ -495,7 +495,7 @@ impl TryInto<Vec<u8>> for Package6 {
     }
 }
 
-impl TryInto<Vec<u8>> for Package7 {
+impl TryInto<Vec<u8>> for Login {
     type Error = anyhow::Error;
 
     fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
@@ -509,7 +509,7 @@ impl TryInto<Vec<u8>> for Package7 {
     }
 }
 
-impl TryInto<Vec<u8>> for Package8 {
+impl TryInto<Vec<u8>> for Acknowledge {
     type Error = anyhow::Error;
 
     fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
@@ -517,7 +517,7 @@ impl TryInto<Vec<u8>> for Package8 {
     }
 }
 
-impl TryInto<Vec<u8>> for Package9 {
+impl TryInto<Vec<u8>> for EndOfList {
     type Error = anyhow::Error;
 
     fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
@@ -525,7 +525,7 @@ impl TryInto<Vec<u8>> for Package9 {
     }
 }
 
-impl TryInto<Vec<u8>> for Package10 {
+impl TryInto<Vec<u8>> for PeerSearch {
     type Error = anyhow::Error;
 
     fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
@@ -539,7 +539,7 @@ impl TryInto<Vec<u8>> for Package10 {
     }
 }
 
-impl TryInto<Vec<u8>> for Package255 {
+impl TryInto<Vec<u8>> for Error {
     type Error = anyhow::Error;
 
     fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
@@ -561,33 +561,33 @@ impl TryInto<Vec<u8>> for Package255 {
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub enum Package {
-    Type1(Package1),
-    Type2(Package2),
-    Type3(Package3),
-    Type4(Package4),
-    Type5(Package5),
-    Type6(Package6),
-    Type7(Package7),
-    Type8(Package8),
-    Type9(Package9),
-    Type10(Package10),
-    Type255(Package255),
+    ClientUpdate(ClientUpdate),
+    AddressConfirm(AddressConfirm),
+    PeerQuery(PeerQuery),
+    PeerNotFound(PeerNotFound),
+    PeerReply(PeerReply),
+    FullQuery(FullQuery),
+    Login(Login),
+    Acknowledge(Acknowledge),
+    EndOfList(EndOfList),
+    PeerSearch(PeerSearch),
+    Error(Error),
 }
 
 impl Package {
     pub fn parse(package_type: u8, slice: &[u8]) -> anyhow::Result<Self> {
         Ok(match package_type {
-            1 => Self::Type1(Package1::try_from(slice)?),
-            2 => Self::Type2(Package2::try_from(slice)?),
-            3 => Self::Type3(Package3::try_from(slice)?),
-            4 => Self::Type4(Package4::try_from(slice)?),
-            5 => Self::Type5(Package5::try_from(slice)?),
-            6 => Self::Type6(Package6::try_from(slice)?),
-            7 => Self::Type7(Package7::try_from(slice)?),
-            8 => Self::Type8(Package8::try_from(slice)?),
-            9 => Self::Type9(Package9::try_from(slice)?),
-            10 => Self::Type10(Package10::try_from(slice)?),
-            255 => Self::Type255(Package255::try_from(slice)?),
+            1 => Self::ClientUpdate(ClientUpdate::try_from(slice)?),
+            2 => Self::AddressConfirm(AddressConfirm::try_from(slice)?),
+            3 => Self::PeerQuery(PeerQuery::try_from(slice)?),
+            4 => Self::PeerNotFound(PeerNotFound::try_from(slice)?),
+            5 => Self::PeerReply(PeerReply::try_from(slice)?),
+            6 => Self::FullQuery(FullQuery::try_from(slice)?),
+            7 => Self::Login(Login::try_from(slice)?),
+            8 => Self::Acknowledge(Acknowledge::try_from(slice)?),
+            9 => Self::EndOfList(EndOfList::try_from(slice)?),
+            10 => Self::PeerSearch(PeerSearch::try_from(slice)?),
+            255 => Self::Error(Error::try_from(slice)?),
 
             _ => bail!(ServerError::ParseFailure(package_type)),
         })
@@ -595,17 +595,17 @@ impl Package {
 
     pub fn package_type(&self) -> u8 {
         match self {
-            Self::Type1(_) => 1,
-            Self::Type2(_) => 2,
-            Self::Type3(_) => 3,
-            Self::Type4(_) => 4,
-            Self::Type5(_) => 5,
-            Self::Type6(_) => 6,
-            Self::Type7(_) => 7,
-            Self::Type8(_) => 8,
-            Self::Type9(_) => 9,
-            Self::Type10(_) => 10,
-            Self::Type255(_) => 255,
+            Self::ClientUpdate(_) => 1,
+            Self::AddressConfirm(_) => 2,
+            Self::PeerQuery(_) => 3,
+            Self::PeerNotFound(_) => 4,
+            Self::PeerReply(_) => 5,
+            Self::FullQuery(_) => 6,
+            Self::Login(_) => 7,
+            Self::Acknowledge(_) => 8,
+            Self::EndOfList(_) => 9,
+            Self::PeerSearch(_) => 10,
+            Self::Error(_) => 255,
         }
     }
 }
@@ -615,17 +615,17 @@ impl TryInto<Vec<u8>> for Package {
 
     fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
         match self {
-            Self::Type1(pkg) => pkg.try_into(),
-            Self::Type2(pkg) => pkg.try_into(),
-            Self::Type3(pkg) => pkg.try_into(),
-            Self::Type4(pkg) => pkg.try_into(),
-            Self::Type5(pkg) => pkg.try_into(),
-            Self::Type6(pkg) => pkg.try_into(),
-            Self::Type7(pkg) => pkg.try_into(),
-            Self::Type8(pkg) => pkg.try_into(),
-            Self::Type9(pkg) => pkg.try_into(),
-            Self::Type10(pkg) => pkg.try_into(),
-            Self::Type255(pkg) => pkg.try_into(),
+            Self::ClientUpdate(pkg) => pkg.try_into(),
+            Self::AddressConfirm(pkg) => pkg.try_into(),
+            Self::PeerQuery(pkg) => pkg.try_into(),
+            Self::PeerNotFound(pkg) => pkg.try_into(),
+            Self::PeerReply(pkg) => pkg.try_into(),
+            Self::FullQuery(pkg) => pkg.try_into(),
+            Self::Login(pkg) => pkg.try_into(),
+            Self::Acknowledge(pkg) => pkg.try_into(),
+            Self::EndOfList(pkg) => pkg.try_into(),
+            Self::PeerSearch(pkg) => pkg.try_into(),
+            Self::Error(pkg) => pkg.try_into(),
         }
     }
 }

@@ -44,7 +44,7 @@ mod tests {
             0xf0, 0x0f,
         ];
 
-        let package = Package::Type1(Package1 {
+        let package = Package::ClientUpdate(ClientUpdate {
             number: 0xff_00_f0_0f,
             pin: 0xf0_0f,
             port: 0x0f_f0,
@@ -61,7 +61,7 @@ mod tests {
             0xff, 0x00, 0xf0, 0x0f,
         ];
 
-        let package = Package::Type2(Package2 {
+        let package = Package::AddressConfirm(AddressConfirm {
             ipaddress: Ipv4Addr::from([0xff, 0x00, 0xf0, 0x0f]),
         });
 
@@ -77,7 +77,7 @@ mod tests {
             0xf7,
         ];
 
-        let package = Package::Type3(Package3 {
+        let package = Package::PeerQuery(PeerQuery {
             number: 0x11_22_33_44,
             version: 0xf7,
         });
@@ -90,7 +90,7 @@ mod tests {
     fn type_4() {
         let serialized: Vec<u8> = vec![];
 
-        let package = Package::Type4(Package4 {});
+        let package = Package::PeerNotFound(PeerNotFound {});
 
         test_both(4, package, serialized);
     }
@@ -114,10 +114,10 @@ mod tests {
             0x14, 0x13, 0x12, 0x11,
         ];
 
-        let package = Package::Type5(Package5 {
+        let package = Package::PeerReply(PeerReply {
             number: 0x01_02_03_04,
             name: String::from("Test"),
-            flags: Package5::flags(true),
+            flags: PeerReply::flags(true),
             client_type: ClientType::BaudotDynIp,
             hostname: Some(String::from("host.name")),
             ipaddress: Some(Ipv4Addr::from(0x08_09_0a_0b)),
@@ -135,7 +135,7 @@ mod tests {
     fn type_6() {
         let serialized: Vec<u8> = vec![0x0f, 0x11, 0x22, 0x33, 0x44];
 
-        let package = Package::Type6(Package6 {
+        let package = Package::FullQuery(FullQuery {
             server_pin: 0x44_33_22_11,
             version: 0x0f,
         });
@@ -148,7 +148,7 @@ mod tests {
     fn type_7() {
         let serialized: Vec<u8> = vec![0x0f, 0x11, 0x22, 0x33, 0x44];
 
-        let package = Package::Type7(Package7 {
+        let package = Package::Login(Login {
             server_pin: 0x44_33_22_11,
             version: 0x0f,
         });
@@ -161,7 +161,7 @@ mod tests {
     fn type_8() {
         let serialized: Vec<u8> = vec![];
 
-        let package = Package::Type8(Package8 {});
+        let package = Package::Acknowledge(Acknowledge {});
 
         test_both(8, package, serialized);
     }
@@ -171,7 +171,7 @@ mod tests {
     fn type_9() {
         let serialized: Vec<u8> = vec![];
 
-        let package = Package::Type9(Package9 {});
+        let package = Package::EndOfList(EndOfList {});
 
         test_both(9, package, serialized);
     }
@@ -186,7 +186,7 @@ mod tests {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
 
-        let package = Package::Type10(Package10 {
+        let package = Package::PeerSearch(PeerSearch {
             pattern: String::from("Pattern"),
             version: 0xf0,
         });
@@ -203,7 +203,7 @@ mod tests {
             100, 33, 0,
         ];
 
-        let package = Package::Type255(Package255 {
+        let package = Package::Error(Error {
             message: String::from("An Error has occured!"),
         });
 

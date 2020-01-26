@@ -12,9 +12,10 @@ anyhow = "1.0"
 thiserror = "1.0"
 
 [features]
-default = ["server", "client", "serde_deserialize", "serde_serialize"]
+default = ["server", "client", "centralex_extension", "serde_deserialize", "serde_serialize"]
 
 client = []
+centralex_extension = []
 server = []
 serde_deserialize = ["serde"]
 serde_serialize = ["serde"]
