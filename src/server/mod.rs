@@ -93,6 +93,12 @@ impl From<String> for String40Bytes {
     }
 }
 
+impl From<&str> for String40Bytes {
+    fn from(string: &str) -> Self {
+        String40Bytes(String::from(string))
+    }
+}
+
 impl<W> binserde::Serialize<W> for String40Bytes
 where
     W: std::io::Write,
@@ -127,6 +133,12 @@ where
             .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
 
         Ok(Self(string))
+    }
+}
+
+impl std::fmt::Display for String40Bytes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        write!(f, "{}", self.0)
     }
 }
 
