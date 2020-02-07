@@ -1,6 +1,6 @@
 [package]
 name = "itelex"
-version = "0.0.4"
+version = "0.1.0"
 authors = ["soruh <mail@soruh.de>"]
 edition = "2018"
 
