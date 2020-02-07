@@ -1,10 +1,5 @@
-use super::errors::ServerError;
 use binserde::{Deserialize, Serialize};
-use std::{
-    convert::{TryFrom, TryInto},
-    ffi::CString,
-    net::Ipv4Addr,
-};
+use std::{convert::TryFrom, ffi::CString, net::Ipv4Addr};
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum ClientType {
@@ -38,7 +33,7 @@ where
     }
     fn deserialize_le(reader: &mut R) -> std::io::Result<Self> {
         ClientType::try_from(u8::deserialize_le(reader)?)
-            .map_err(|_| std::io::ErrorKind::Other.into())
+            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))
     }
 }
 
@@ -136,7 +131,7 @@ where
 
         let string = CString::new(&buffer[0..end_of_content])?
             .into_string()
-            .map_err(|_| std::io::ErrorKind::Other)?;
+            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
 
         Ok(Self(string))
     }
@@ -445,7 +440,7 @@ where
                 message: deserialize_string(buffer.into_inner())?,
             }),
 
-            _ => Err(std::io::ErrorKind::Other)?,
+            _ => Err(std::io::ErrorKind::InvalidData)?,
         })
     }
 }
@@ -468,7 +463,7 @@ fn deserialize_string(buffer: Vec<u8>) -> std::io::Result<String> {
 
     let string = CString::new(&buffer[0..end_of_content])?
         .into_string()
-        .map_err(|_| std::io::ErrorKind::Other)?;
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
 
     Ok(string)
 }
