@@ -12,7 +12,7 @@ binserde = { version = "0.1.1", git = "https://github.com/soruh/binserde" }
 binserde-derive = { version = "0.1.1", git = "https://github.com/soruh/binserde" }
 
 [features]
-default = ["server", "client", "centralex", "serde_deserialize", "serde_serialize"]
+default = []
 
 client = []
 centralex = []
