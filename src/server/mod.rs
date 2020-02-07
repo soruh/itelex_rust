@@ -305,6 +305,14 @@ pub struct Error {
     pub message: String,
 }
 
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for Error {}
+
 // TODO: Box some of the contents, so that not all instances
 // TODO: of this enum are >= 101 Bytes
 #[derive(Debug, Eq, PartialEq, Clone)]
