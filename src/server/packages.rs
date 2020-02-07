@@ -3,48 +3,8 @@ use binserde::{Deserialize, Serialize};
 use std::{
     convert::{TryFrom, TryInto},
     ffi::CString,
-    io::Write,
     net::Ipv4Addr,
 };
-
-// ! This is DISGUSTING, but neccessary until we get const generics
-pub(crate) struct ArrayImplWrapper<'a>(&'a [u8]);
-
-impl<'a> TryInto<[u8; LENGTH_TYPE_5]> for ArrayImplWrapper<'a> {
-    type Error = anyhow::Error;
-
-    fn try_into(self) -> Result<[u8; LENGTH_TYPE_5], Self::Error> {
-        let mut res = [0_u8; LENGTH_TYPE_5];
-
-        for (i, b) in self.0.iter().enumerate() {
-            if i < LENGTH_TYPE_5 {
-                res[i] = *b;
-            } else {
-                return Err(ServerError::ParseFailure(5).into());
-            }
-        }
-
-        Ok(res)
-    }
-}
-
-impl<'a> TryInto<[u8; LENGTH_TYPE_10]> for ArrayImplWrapper<'a> {
-    type Error = anyhow::Error;
-
-    fn try_into(self) -> Result<[u8; LENGTH_TYPE_10], Self::Error> {
-        let mut res = [0_u8; LENGTH_TYPE_10];
-
-        for (i, b) in self.0.iter().enumerate() {
-            if i < LENGTH_TYPE_10 {
-                res[i] = *b;
-            } else {
-                return Err(ServerError::ParseFailure(10).into());
-            }
-        }
-
-        Ok(res)
-    }
-}
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum ClientType {
@@ -61,11 +21,8 @@ impl<W> binserde::Serialize<W> for ClientType
 where
     W: std::io::Write,
 {
-    fn serialize_ne(&self, writer: &mut W) -> std::io::Result<()> {
-        (*self as u8).serialize_ne(writer)
-    }
-    fn serialize_be(&self, writer: &mut W) -> std::io::Result<()> {
-        (*self as u8).serialize_be(writer)
+    fn serialize_ne(&self, _: &mut W) -> std::io::Result<()> {
+        panic!("I-Telex packages are always in Little Endian format")
     }
     fn serialize_le(&self, writer: &mut W) -> std::io::Result<()> {
         (*self as u8).serialize_le(writer)
@@ -76,13 +33,8 @@ impl<R> binserde::Deserialize<R> for ClientType
 where
     R: std::io::Read,
 {
-    fn deserialize_ne(reader: &mut R) -> std::io::Result<Self> {
-        ClientType::try_from(u8::deserialize_ne(reader)?)
-            .map_err(|_| std::io::ErrorKind::Other.into())
-    }
-    fn deserialize_be(reader: &mut R) -> std::io::Result<Self> {
-        ClientType::try_from(u8::deserialize_be(reader)?)
-            .map_err(|_| std::io::ErrorKind::Other.into())
+    fn deserialize_ne(_: &mut R) -> std::io::Result<Self> {
+        panic!("I-Telex packages are always in Little Endian format")
     }
     fn deserialize_le(reader: &mut R) -> std::io::Result<Self> {
         ClientType::try_from(u8::deserialize_le(reader)?)
@@ -443,39 +395,8 @@ impl<W> binserde::Serialize<W> for Package
 where
     W: std::io::Write,
 {
-    fn serialize_ne(&self, writer: &mut W) -> std::io::Result<()> {
-        self.serialize_header(writer)?;
-
-        match self {
-            Self::ClientUpdate(pkg) => (*pkg).serialize_ne(writer),
-            Self::AddressConfirm(pkg) => (*pkg).serialize_ne(writer),
-            Self::PeerQuery(pkg) => (*pkg).serialize_ne(writer),
-            Self::PeerNotFound(pkg) => (*pkg).serialize_ne(writer),
-            Self::PeerReply(pkg) => (*pkg).serialize_ne(writer),
-            Self::FullQuery(pkg) => (*pkg).serialize_ne(writer),
-            Self::Login(pkg) => (*pkg).serialize_ne(writer),
-            Self::Acknowledge(pkg) => (*pkg).serialize_ne(writer),
-            Self::EndOfList(pkg) => (*pkg).serialize_ne(writer),
-            Self::PeerSearch(pkg) => (*pkg).serialize_ne(writer),
-            Self::Error(pkg) => serialize_string(&pkg.message, writer),
-        }
-    }
-    fn serialize_be(&self, writer: &mut W) -> std::io::Result<()> {
-        self.serialize_header(writer)?;
-
-        match self {
-            Self::ClientUpdate(pkg) => (*pkg).serialize_be(writer),
-            Self::AddressConfirm(pkg) => (*pkg).serialize_be(writer),
-            Self::PeerQuery(pkg) => (*pkg).serialize_be(writer),
-            Self::PeerNotFound(pkg) => (*pkg).serialize_be(writer),
-            Self::PeerReply(pkg) => (*pkg).serialize_be(writer),
-            Self::FullQuery(pkg) => (*pkg).serialize_be(writer),
-            Self::Login(pkg) => (*pkg).serialize_be(writer),
-            Self::Acknowledge(pkg) => (*pkg).serialize_be(writer),
-            Self::EndOfList(pkg) => (*pkg).serialize_be(writer),
-            Self::PeerSearch(pkg) => (*pkg).serialize_be(writer),
-            Self::Error(pkg) => serialize_string(&pkg.message, writer),
-        }
+    fn serialize_ne(&self, _: &mut W) -> std::io::Result<()> {
+        panic!("I-Telex packages are always in Little Endian format")
     }
     fn serialize_le(&self, writer: &mut W) -> std::io::Result<()> {
         self.serialize_header(writer)?;
@@ -500,62 +421,10 @@ impl<R> binserde::Deserialize<R> for Package
 where
     R: std::io::Read,
 {
-    fn deserialize_ne(reader: &mut R) -> std::io::Result<Self> {
-        let (package_type, package_length) = Package::deserialize_header(reader)?;
-        eprintln!(
-            "package_type: {}, package_length: {}",
-            package_type, package_length
-        );
-        let mut buffer = vec![0u8; package_length as usize];
-        reader.read_exact(&mut buffer)?;
-        eprintln!("buffer: {:?}", buffer);
-        let mut buffer = std::io::Cursor::new(buffer);
-        Ok(match package_type {
-            1 => Self::ClientUpdate(ClientUpdate::deserialize_ne(&mut buffer)?),
-            2 => Self::AddressConfirm(AddressConfirm::deserialize_ne(&mut buffer)?),
-            3 => Self::PeerQuery(PeerQuery::deserialize_ne(&mut buffer)?),
-            4 => Self::PeerNotFound(PeerNotFound::deserialize_ne(&mut buffer)?),
-            5 => Self::PeerReply(PeerReply::deserialize_ne(&mut buffer)?),
-            6 => Self::FullQuery(FullQuery::deserialize_ne(&mut buffer)?),
-            7 => Self::Login(Login::deserialize_ne(&mut buffer)?),
-            8 => Self::Acknowledge(Acknowledge::deserialize_ne(&mut buffer)?),
-            9 => Self::EndOfList(EndOfList::deserialize_ne(&mut buffer)?),
-            10 => Self::PeerSearch(PeerSearch::deserialize_ne(&mut buffer)?),
-            255 => Self::Error(Error {
-                message: deserialize_string(buffer.into_inner())?,
-            }),
-
-            _ => Err(std::io::ErrorKind::Other)?,
-        })
+    fn deserialize_ne(_: &mut R) -> std::io::Result<Self> {
+        panic!("I-Telex packages are always in Little Endian format")
     }
-    fn deserialize_be(reader: &mut R) -> std::io::Result<Self> {
-        let (package_type, package_length) = Package::deserialize_header(reader)?;
-        eprintln!(
-            "package_type: {}, package_length: {}",
-            package_type, package_length
-        );
-        let mut buffer = vec![0u8; package_length as usize];
-        reader.read_exact(&mut buffer)?;
-        eprintln!("buffer: {:?}", buffer);
-        let mut buffer = std::io::Cursor::new(buffer);
-        Ok(match package_type {
-            1 => Self::ClientUpdate(ClientUpdate::deserialize_be(&mut buffer)?),
-            2 => Self::AddressConfirm(AddressConfirm::deserialize_be(&mut buffer)?),
-            3 => Self::PeerQuery(PeerQuery::deserialize_be(&mut buffer)?),
-            4 => Self::PeerNotFound(PeerNotFound::deserialize_be(&mut buffer)?),
-            5 => Self::PeerReply(PeerReply::deserialize_be(&mut buffer)?),
-            6 => Self::FullQuery(FullQuery::deserialize_be(&mut buffer)?),
-            7 => Self::Login(Login::deserialize_be(&mut buffer)?),
-            8 => Self::Acknowledge(Acknowledge::deserialize_be(&mut buffer)?),
-            9 => Self::EndOfList(EndOfList::deserialize_be(&mut buffer)?),
-            10 => Self::PeerSearch(PeerSearch::deserialize_be(&mut buffer)?),
-            255 => Self::Error(Error {
-                message: deserialize_string(buffer.into_inner())?,
-            }),
 
-            _ => Err(std::io::ErrorKind::Other)?,
-        })
-    }
     fn deserialize_le(reader: &mut R) -> std::io::Result<Self> {
         let (package_type, package_length) = Package::deserialize_header(reader)?;
         let mut buffer = vec![0u8; package_length as usize];
