@@ -1,21 +1,25 @@
 [package]
 name = "itelex"
-version = "0.0.3"
+version = "0.0.4"
 authors = ["soruh <mail@soruh.de>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = {version = "1.0", optional = true, features = ["derive"]}
+serde = { version = "1.0", optional = true, features = ["derive"] }
 anyhow = "1.0"
 thiserror = "1.0"
+# binserde = { version = "0.1.1", git = "https://github.com/soruh/binserde" }
+# binserde-derive = { version = "0.1", git = "https://github.com/soruh/binserde" }
+binserde = { version = "0.1.1", path = "../binserde/binserde" }
+binserde-derive = { version = "0.1", path = "../binserde/binserde-derive" }
 
 [features]
-default = ["server", "client", "centralex_extension", "serde_deserialize", "serde_serialize"]
+default = ["server", "client", "centralex", "serde_deserialize", "serde_serialize"]
 
 client = []
-centralex_extension = []
+centralex = []
 server = []
 serde_deserialize = ["serde"]
 serde_serialize = ["serde"]

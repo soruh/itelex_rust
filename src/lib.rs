@@ -6,3 +6,6 @@ pub mod client;
 
 #[cfg(feature = "server")]
 pub mod server;
+
+#[cfg(feature = "centralex")]
+pub mod centralex;

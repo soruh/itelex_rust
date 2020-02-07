@@ -4,41 +4,38 @@ pub mod packages;
 pub use errors::*;
 pub use packages::*;
 
-use std::convert::TryInto;
-
-pub fn serialize(package: Package) -> anyhow::Result<Vec<u8>> {
-    Ok(package.try_into()?)
-}
-
-pub fn deserialize(package_type: u8, slice: &[u8]) -> anyhow::Result<Package> {
-    Ok(Package::parse(package_type, slice)?)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use binserde::{Deserialize, Serialize};
+    use std::io::Cursor;
     use std::net::Ipv4Addr;
 
-    fn test_both(package_type: u8, package: Package, serialized: Vec<u8>) {
-        assert_eq!(
-            deserialize(package_type, serialized.as_slice())
-                .expect("Failed to convert from slice to Package"),
-            package,
-            "deserialize created unexpected result"
-        );
+    fn test_all(package: Package, serialized: Vec<u8>) {
+        {
+            let mut cursor = Cursor::new(serialized.clone());
+            assert_eq!(
+                Package::deserialize_le(&mut cursor).expect("Package::deserialize_le failed"),
+                package,
+                "deserialize_le created unexpected result"
+            );
 
-        assert_eq!(
-            serialize(package).expect("Failed to convert from Package to slice"),
-            serialized,
-            "serialisation created unexpected result"
-        );
+            let mut res = Vec::with_capacity(serialized.len());
+
+            package
+                .serialize_le(&mut res)
+                .expect("package.serialize_le failed");
+
+            assert_eq!(res, serialized, "serialize_le created unexpected result");
+        }
     }
 
     #[test]
 
     fn type_1() {
         let serialized: Vec<u8> = vec![
-            // number:
+            // header:
+            1, 8, // number:
             0x0f, 0xf0, 0x00, 0xff, // pin:
             0x0f, 0xf0, // port:
             0xf0, 0x0f,
@@ -50,14 +47,15 @@ mod tests {
             port: 0x0f_f0,
         });
 
-        test_both(1, package, serialized);
+        test_all(package, serialized);
     }
 
     #[test]
 
     fn type_2() {
         let serialized: Vec<u8> = vec![
-            // ipaddress
+            // header:
+            2, 4, // ipaddress
             0xff, 0x00, 0xf0, 0x0f,
         ];
 
@@ -65,14 +63,15 @@ mod tests {
             ipaddress: Ipv4Addr::from([0xff, 0x00, 0xf0, 0x0f]),
         });
 
-        test_both(2, package, serialized);
+        test_all(package, serialized);
     }
 
     #[test]
 
     fn type_3() {
         let serialized: Vec<u8> = vec![
-            // number:
+            // header:
+            3, 5, // number:
             0x44, 0x33, 0x22, 0x11, // version:
             0xf7,
         ];
@@ -82,24 +81,25 @@ mod tests {
             version: 0xf7,
         });
 
-        test_both(3, package, serialized);
+        test_all(package, serialized);
     }
 
     #[test]
 
     fn type_4() {
-        let serialized: Vec<u8> = vec![];
+        let serialized: Vec<u8> = vec![4, 0];
 
         let package = Package::PeerNotFound(PeerNotFound {});
 
-        test_both(4, package, serialized);
+        test_all(package, serialized);
     }
 
     #[test]
 
     fn type_5() {
         let serialized: Vec<u8> = vec![
-            // number:
+            // header:
+            5, 100, // number:
             4, 3, 2, 1, // name:
             84, 101, 115, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // flags:
@@ -116,89 +116,91 @@ mod tests {
 
         let package = Package::PeerReply(PeerReply {
             number: 0x01_02_03_04,
-            name: String::from("Test"),
+            name: String::from("Test").into(),
             flags: PeerReply::flags(true),
             client_type: ClientType::BaudotDynIp,
-            hostname: Some(String::from("host.name")),
-            ipaddress: Some(Ipv4Addr::from(0x08_09_0a_0b)),
+            hostname: String::from("host.name").into(),
+            ipaddress: Ipv4Addr::from(0x08_09_0a_0b),
             port: 0x0c_0d,
             extension: 0x0e,
             pin: 0x0f_10,
             timestamp: 0x11_12_13_14,
         });
 
-        test_both(5, package, serialized);
+        test_all(package, serialized);
     }
 
     #[test]
 
     fn type_6() {
-        let serialized: Vec<u8> = vec![0x0f, 0x11, 0x22, 0x33, 0x44];
+        let serialized: Vec<u8> = vec![6, 5, 0x0f, 0x11, 0x22, 0x33, 0x44];
 
         let package = Package::FullQuery(FullQuery {
             server_pin: 0x44_33_22_11,
             version: 0x0f,
         });
 
-        test_both(6, package, serialized);
+        test_all(package, serialized);
     }
 
     #[test]
 
     fn type_7() {
-        let serialized: Vec<u8> = vec![0x0f, 0x11, 0x22, 0x33, 0x44];
+        let serialized: Vec<u8> = vec![7, 5, 0x0f, 0x11, 0x22, 0x33, 0x44];
 
         let package = Package::Login(Login {
             server_pin: 0x44_33_22_11,
             version: 0x0f,
         });
 
-        test_both(7, package, serialized);
+        test_all(package, serialized);
     }
 
     #[test]
 
     fn type_8() {
-        let serialized: Vec<u8> = vec![];
+        let serialized: Vec<u8> = vec![8, 0];
 
         let package = Package::Acknowledge(Acknowledge {});
 
-        test_both(8, package, serialized);
+        test_all(package, serialized);
     }
 
     #[test]
 
     fn type_9() {
-        let serialized: Vec<u8> = vec![];
+        let serialized: Vec<u8> = vec![9, 0];
 
         let package = Package::EndOfList(EndOfList {});
 
-        test_both(9, package, serialized);
+        test_all(package, serialized);
     }
 
     #[test]
 
     fn type_10() {
         let serialized: Vec<u8> = vec![
-            // version:
+            // header:
+            10, 41,  // version:
             240, // pattern:
             80, 97, 116, 116, 101, 114, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
 
         let package = Package::PeerSearch(PeerSearch {
-            pattern: String::from("Pattern"),
+            pattern: String::from("Pattern").into(),
             version: 0xf0,
         });
 
-        test_both(10, package, serialized);
+        test_all(package, serialized);
     }
 
     #[test]
 
     fn type_255() {
         let serialized: Vec<u8> = vec![
-            // message:
+            // header:
+            0xff, 22, // message:
             65, 110, 32, 69, 114, 114, 111, 114, 32, 104, 97, 115, 32, 111, 99, 99, 117, 114, 101,
             100, 33, 0,
         ];
@@ -207,6 +209,6 @@ mod tests {
             message: String::from("An Error has occured!"),
         });
 
-        test_both(255, package, serialized);
+        test_all(package, serialized);
     }
 }

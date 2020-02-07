@@ -1,4 +1,5 @@
 use super::errors::ServerError;
+use binserde::{Deserialize, Serialize};
 use std::{
     convert::{TryFrom, TryInto},
     ffi::CString,
@@ -46,7 +47,6 @@ impl<'a> TryInto<[u8; LENGTH_TYPE_10]> for ArrayImplWrapper<'a> {
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
-#[repr(u8)]
 pub enum ClientType {
     Deleted = 0,
     BaudotHostname = 1,
@@ -55,6 +55,39 @@ pub enum ClientType {
     AsciiIpaddress = 4,
     BaudotDynIp = 5,
     Email = 6,
+}
+
+impl<W> binserde::Serialize<W> for ClientType
+where
+    W: std::io::Write,
+{
+    fn serialize_ne(&self, writer: &mut W) -> std::io::Result<()> {
+        (*self as u8).serialize_ne(writer)
+    }
+    fn serialize_be(&self, writer: &mut W) -> std::io::Result<()> {
+        (*self as u8).serialize_be(writer)
+    }
+    fn serialize_le(&self, writer: &mut W) -> std::io::Result<()> {
+        (*self as u8).serialize_le(writer)
+    }
+}
+
+impl<R> binserde::Deserialize<R> for ClientType
+where
+    R: std::io::Read,
+{
+    fn deserialize_ne(reader: &mut R) -> std::io::Result<Self> {
+        ClientType::try_from(u8::deserialize_ne(reader)?)
+            .map_err(|_| std::io::ErrorKind::Other.into())
+    }
+    fn deserialize_be(reader: &mut R) -> std::io::Result<Self> {
+        ClientType::try_from(u8::deserialize_be(reader)?)
+            .map_err(|_| std::io::ErrorKind::Other.into())
+    }
+    fn deserialize_le(reader: &mut R) -> std::io::Result<Self> {
+        ClientType::try_from(u8::deserialize_le(reader)?)
+            .map_err(|_| std::io::ErrorKind::Other.into())
+    }
 }
 
 impl std::fmt::Display for ClientType {
@@ -103,6 +136,77 @@ impl<'de> serde::Deserialize<'de> for ClientType {
     }
 }
 
+#[derive(Debug, Eq, PartialEq, Clone)]
+#[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
+pub struct String40Bytes(pub String);
+impl From<String> for String40Bytes {
+    fn from(string: String) -> Self {
+        debug_assert!(
+            string_byte_length(&string) <= 40,
+            "string would be truncated: {:?} ({}) is too long",
+            &string,
+            string_byte_length(&string)
+        );
+
+        String40Bytes(string)
+    }
+}
+
+impl<W> binserde::Serialize<W> for String40Bytes
+where
+    W: std::io::Write,
+{
+    fn serialize_ne(&self, writer: &mut W) -> std::result::Result<(), std::io::Error> {
+        let mut string = self.0.clone().into_bytes();
+
+        string.truncate(39); // remove all content that will not fit into the buffer
+        string.resize_with(40, || 0); // extend the string to fit the buffer, padding with zeros
+        writer.write_all(&string)?; // write the string to the buffer
+
+        Ok(())
+    }
+}
+
+impl<R> binserde::Deserialize<R> for String40Bytes
+where
+    R: std::io::Read,
+{
+    fn deserialize_ne(reader: &mut R) -> std::io::Result<Self> {
+        let mut buffer = [0u8; 40];
+
+        reader.read_exact(&mut buffer)?;
+
+        let end_of_content = buffer
+            .iter()
+            .position(|x| *x == 0)
+            .unwrap_or_else(|| buffer.len());
+
+        let string = CString::new(&buffer[0..end_of_content])?
+            .into_string()
+            .map_err(|_| std::io::ErrorKind::Other)?;
+
+        Ok(Self(string))
+    }
+}
+
+impl std::ops::Deref for String40Bytes {
+    type Target = String;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl std::ops::DerefMut for String40Bytes {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+impl Default for String40Bytes {
+    fn default() -> Self {
+        Self(String::new())
+    }
+}
+
 pub const LENGTH_TYPE_1: usize = 8;
 pub const LENGTH_TYPE_2: usize = 4;
 pub const LENGTH_TYPE_3: usize = 5;
@@ -114,7 +218,7 @@ pub const LENGTH_TYPE_8: usize = 0;
 pub const LENGTH_TYPE_9: usize = 0;
 pub const LENGTH_TYPE_10: usize = 41;
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct ClientUpdate {
@@ -123,14 +227,14 @@ pub struct ClientUpdate {
     pub port: u16,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct AddressConfirm {
     pub ipaddress: Ipv4Addr,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct PeerQuery {
@@ -138,25 +242,25 @@ pub struct PeerQuery {
     pub version: u8,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct PeerNotFound {}
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct PeerReply {
     pub number: u32,
-    pub name: String,
+    pub name: String40Bytes,
     pub flags: u16,
     pub client_type: ClientType,
-    pub hostname: Option<String>,
-    pub ipaddress: Option<Ipv4Addr>,
+    pub hostname: String40Bytes,
+    pub ipaddress: Ipv4Addr,
     pub port: u16,
     pub extension: u8,
     pub pin: u16,
-    pub timestamp: u32, // TODO
+    pub timestamp: u32,
 }
 
 impl PeerReply {
@@ -185,9 +289,41 @@ impl PeerReply {
             0x00
         }
     }
+
+    pub fn hostname<'s>(&'s self) -> Option<&'s str> {
+        if self.hostname.0.is_empty() {
+            None
+        } else {
+            Some(&self.hostname.0)
+        }
+    }
+
+    pub fn hostname_mut<'s>(&'s mut self) -> Option<&'s mut str> {
+        if self.hostname.0.is_empty() {
+            None
+        } else {
+            Some(&mut self.hostname.0)
+        }
+    }
+
+    pub fn ipaddress<'s>(&'s self) -> Option<&'s Ipv4Addr> {
+        if self.ipaddress.is_broadcast() {
+            None
+        } else {
+            Some(&self.ipaddress)
+        }
+    }
+
+    pub fn ipaddress_mut<'s>(&'s mut self) -> Option<&'s mut Ipv4Addr> {
+        if self.ipaddress.is_broadcast() {
+            None
+        } else {
+            Some(&mut self.ipaddress)
+        }
+    }
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct FullQuery {
@@ -195,7 +331,7 @@ pub struct FullQuery {
     pub server_pin: u32,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct Login {
@@ -203,22 +339,22 @@ pub struct Login {
     pub server_pin: u32,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct Acknowledge {}
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct EndOfList {}
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct PeerSearch {
     pub version: u8,
-    pub pattern: String,
+    pub pattern: String40Bytes,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -226,333 +362,6 @@ pub struct PeerSearch {
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct Error {
     pub message: String,
-}
-
-impl TryFrom<&[u8]> for ClientUpdate {
-    type Error = anyhow::Error;
-
-    fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
-        if slice.len() < LENGTH_TYPE_1 {
-            bail!(ServerError::ParseFailure(1))
-        }
-
-        Ok(Self {
-            number: u32::from_le_bytes(slice[0..4].try_into()?),
-            pin: u16::from_le_bytes(slice[4..6].try_into()?),
-            port: u16::from_le_bytes(slice[6..8].try_into()?),
-        })
-    }
-}
-
-impl TryFrom<&[u8]> for AddressConfirm {
-    type Error = anyhow::Error;
-
-    fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
-        if slice.len() < LENGTH_TYPE_2 {
-            bail!(ServerError::ParseFailure(2))
-        }
-
-        Ok(Self {
-            ipaddress: {
-                let array: [u8; 4] = slice[0..4].try_into()?;
-
-                Ipv4Addr::from(array)
-            },
-        })
-    }
-}
-
-impl TryFrom<&[u8]> for PeerQuery {
-    type Error = anyhow::Error;
-
-    fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
-        if slice.len() < LENGTH_TYPE_3 {
-            bail!(ServerError::ParseFailure(3))
-        }
-
-        Ok(Self {
-            number: u32::from_le_bytes(slice[0..4].try_into()?),
-            version: u8::from_le_bytes(slice[4..5].try_into()?),
-        })
-    }
-}
-
-impl TryFrom<&[u8]> for PeerNotFound {
-    type Error = anyhow::Error;
-
-    #[allow(clippy::absurd_extreme_comparisons)]
-    fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
-        if slice.len() < LENGTH_TYPE_4 {
-            bail!(ServerError::ParseFailure(4))
-        }
-
-        Ok(Self {})
-    }
-}
-
-impl TryFrom<&[u8]> for PeerReply {
-    type Error = anyhow::Error;
-
-    fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
-        if slice.len() < LENGTH_TYPE_5 {
-            bail!(ServerError::ParseFailure(5))
-        }
-
-        Ok(Self {
-            number: u32::from_le_bytes(slice[0..4].try_into()?),
-            name: string_from_slice(&slice[4..44])?,
-            flags: u16::from_le_bytes(slice[44..46].try_into()?),
-            client_type: ClientType::try_from(u8::from_le_bytes(slice[46..47].try_into()?))?,
-            hostname: {
-                let hostname = string_from_slice(&slice[47..87])?;
-
-                if hostname.is_empty() {
-                    None
-                } else {
-                    Some(hostname)
-                }
-            },
-            ipaddress: {
-                let octets: [u8; 4] = slice[87..91].try_into()?;
-
-                let ipaddress = Ipv4Addr::from(octets);
-
-                if ipaddress.is_unspecified() {
-                    None
-                } else {
-                    Some(ipaddress)
-                }
-            },
-            port: u16::from_le_bytes(slice[91..93].try_into()?),
-            extension: u8::from_le_bytes(slice[93..94].try_into()?),
-            pin: u16::from_le_bytes(slice[94..96].try_into()?),
-            timestamp: u32::from_le_bytes(slice[96..100].try_into()?),
-        })
-    }
-}
-
-impl TryFrom<&[u8]> for FullQuery {
-    type Error = anyhow::Error;
-
-    fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
-        if slice.len() < LENGTH_TYPE_6 {
-            bail!(ServerError::ParseFailure(6))
-        }
-
-        Ok(Self {
-            version: u8::from_le_bytes(slice[0..1].try_into()?),
-            server_pin: u32::from_le_bytes(slice[1..5].try_into()?),
-        })
-    }
-}
-
-impl TryFrom<&[u8]> for Login {
-    type Error = anyhow::Error;
-
-    fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
-        if slice.len() < LENGTH_TYPE_7 {
-            bail!(ServerError::ParseFailure(7))
-        }
-
-        Ok(Self {
-            version: u8::from_le_bytes(slice[0..1].try_into()?),
-            server_pin: u32::from_le_bytes(slice[1..5].try_into()?),
-        })
-    }
-}
-
-impl TryFrom<&[u8]> for Acknowledge {
-    type Error = anyhow::Error;
-
-    #[allow(clippy::absurd_extreme_comparisons)]
-    fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
-        if slice.len() < LENGTH_TYPE_8 {
-            bail!(ServerError::ParseFailure(8))
-        }
-
-        Ok(Self {})
-    }
-}
-
-impl TryFrom<&[u8]> for EndOfList {
-    type Error = anyhow::Error;
-
-    #[allow(clippy::absurd_extreme_comparisons)]
-    fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
-        if slice.len() < LENGTH_TYPE_9 {
-            bail!(ServerError::ParseFailure(9))
-        }
-
-        Ok(Self {})
-    }
-}
-
-impl TryFrom<&[u8]> for PeerSearch {
-    type Error = anyhow::Error;
-
-    fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
-        if slice.len() < LENGTH_TYPE_10 {
-            bail!(ServerError::ParseFailure(10))
-        }
-
-        Ok(Self {
-            version: u8::from_le_bytes(slice[0..1].try_into()?),
-            pattern: string_from_slice(slice[1..41].try_into()?)?,
-        })
-    }
-}
-
-impl TryFrom<&[u8]> for Error {
-    type Error = anyhow::Error;
-
-    fn try_from(slice: &[u8]) -> anyhow::Result<Self> {
-        Ok(Self {
-            message: string_from_slice(slice)?,
-        })
-    }
-}
-
-impl TryInto<Vec<u8>> for ClientUpdate {
-    type Error = anyhow::Error;
-
-    fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
-        let mut res: Vec<u8> = Vec::with_capacity(LENGTH_TYPE_1);
-
-        res.write_all(&self.number.to_le_bytes())?;
-        res.write_all(&self.pin.to_le_bytes())?;
-        res.write_all(&self.port.to_le_bytes())?;
-
-        Ok(res)
-    }
-}
-
-impl TryInto<Vec<u8>> for AddressConfirm {
-    type Error = anyhow::Error;
-
-    fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
-        let mut res: Vec<u8> = Vec::with_capacity(LENGTH_TYPE_2);
-
-        res.write_all(&self.ipaddress.octets())?;
-
-        Ok(res)
-    }
-}
-
-impl TryInto<Vec<u8>> for PeerQuery {
-    type Error = anyhow::Error;
-
-    fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
-        let mut res: Vec<u8> = Vec::with_capacity(LENGTH_TYPE_3);
-
-        res.write_all(&self.number.to_le_bytes())?;
-
-        res.write_all(&self.version.to_le_bytes())?;
-
-        Ok(res)
-    }
-}
-
-impl TryInto<Vec<u8>> for PeerNotFound {
-    type Error = anyhow::Error;
-
-    fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
-        Ok(Vec::new())
-    }
-}
-
-impl TryInto<Vec<u8>> for PeerReply {
-    type Error = anyhow::Error;
-
-    fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
-        let mut res: Vec<u8> = Vec::with_capacity(LENGTH_TYPE_5);
-
-        res.write_all(&self.number.to_le_bytes())?;
-        res.write_all(&array_from_string(self.name))?;
-        res.write_all(&self.flags.to_le_bytes())?;
-        res.write_all(&(self.client_type as u8).to_le_bytes())?;
-        res.write_all(&array_from_string(self.hostname.unwrap_or_default()))?;
-        res.write_all(&self.ipaddress.map(|e| e.octets()).unwrap_or([0, 0, 0, 0]))?;
-        res.write_all(&self.port.to_le_bytes())?;
-        res.write_all(&self.extension.to_le_bytes())?;
-        res.write_all(&self.pin.to_le_bytes())?;
-        res.write_all(&self.timestamp.to_le_bytes())?;
-
-        Ok(res)
-    }
-}
-
-impl TryInto<Vec<u8>> for FullQuery {
-    type Error = anyhow::Error;
-
-    fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
-        let mut res: Vec<u8> = Vec::with_capacity(LENGTH_TYPE_6);
-
-        res.write_all(&self.version.to_le_bytes())?;
-
-        res.write_all(&self.server_pin.to_le_bytes())?;
-
-        Ok(res)
-    }
-}
-
-impl TryInto<Vec<u8>> for Login {
-    type Error = anyhow::Error;
-
-    fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
-        let mut res: Vec<u8> = Vec::with_capacity(LENGTH_TYPE_7);
-
-        res.write_all(&self.version.to_le_bytes())?;
-
-        res.write_all(&self.server_pin.to_le_bytes())?;
-
-        Ok(res)
-    }
-}
-
-impl TryInto<Vec<u8>> for Acknowledge {
-    type Error = anyhow::Error;
-
-    fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
-        Ok(Vec::new())
-    }
-}
-
-impl TryInto<Vec<u8>> for EndOfList {
-    type Error = anyhow::Error;
-
-    fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
-        Ok(Vec::new())
-    }
-}
-
-impl TryInto<Vec<u8>> for PeerSearch {
-    type Error = anyhow::Error;
-
-    fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
-        let mut res: Vec<u8> = Vec::with_capacity(LENGTH_TYPE_10);
-
-        res.write_all(&self.version.to_le_bytes())?;
-
-        res.write_all(&array_from_string(self.pattern))?;
-
-        Ok(res)
-    }
-}
-
-impl TryInto<Vec<u8>> for Error {
-    type Error = anyhow::Error;
-
-    fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
-        let mut res: Vec<u8> = CString::new(self.message)?.try_into()?;
-
-        res.push(0);
-
-        if res.len() > 0xff {
-            bail!(ServerError::SerializeFailure(255));
-        }
-
-        Ok(res)
-    }
 }
 
 // TODO: Box some of the contents, so that not all instances
@@ -575,24 +384,6 @@ pub enum Package {
 }
 
 impl Package {
-    pub fn parse(package_type: u8, slice: &[u8]) -> anyhow::Result<Self> {
-        Ok(match package_type {
-            1 => Self::ClientUpdate(ClientUpdate::try_from(slice)?),
-            2 => Self::AddressConfirm(AddressConfirm::try_from(slice)?),
-            3 => Self::PeerQuery(PeerQuery::try_from(slice)?),
-            4 => Self::PeerNotFound(PeerNotFound::try_from(slice)?),
-            5 => Self::PeerReply(PeerReply::try_from(slice)?),
-            6 => Self::FullQuery(FullQuery::try_from(slice)?),
-            7 => Self::Login(Login::try_from(slice)?),
-            8 => Self::Acknowledge(Acknowledge::try_from(slice)?),
-            9 => Self::EndOfList(EndOfList::try_from(slice)?),
-            10 => Self::PeerSearch(PeerSearch::try_from(slice)?),
-            255 => Self::Error(Error::try_from(slice)?),
-
-            _ => bail!(ServerError::ParseFailure(package_type)),
-        })
-    }
-
     pub fn package_type(&self) -> u8 {
         match self {
             Self::ClientUpdate(_) => 1,
@@ -608,50 +399,207 @@ impl Package {
             Self::Error(_) => 255,
         }
     }
+
+    pub fn package_length(&self) -> u8 {
+        let res = match self {
+            Self::ClientUpdate(_) => LENGTH_TYPE_1,
+            Self::AddressConfirm(_) => LENGTH_TYPE_2,
+            Self::PeerQuery(_) => LENGTH_TYPE_3,
+            Self::PeerNotFound(_) => LENGTH_TYPE_4,
+            Self::PeerReply(_) => LENGTH_TYPE_5,
+            Self::FullQuery(_) => LENGTH_TYPE_6,
+            Self::Login(_) => LENGTH_TYPE_7,
+            Self::Acknowledge(_) => LENGTH_TYPE_8,
+            Self::EndOfList(_) => LENGTH_TYPE_9,
+            Self::PeerSearch(_) => LENGTH_TYPE_10,
+            Self::Error(val) => string_byte_length(&val.message),
+        };
+
+        res as u8
+    }
+
+    pub fn serialize_header(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
+        // Note: native endianess is always correct here, since an u8 is only one byte...
+        let package_type = self.package_type();
+        let package_length = self.package_length();
+
+        package_type.serialize_ne(writer)?;
+        package_length.serialize_ne(writer)?;
+
+        Ok(())
+    }
+
+    pub fn deserialize_header(reader: &mut impl std::io::Read) -> std::io::Result<(u8, u8)> {
+        // Note: native endianess is always correct here, since an u8 is only one byte...
+        let package_type = u8::deserialize_ne(reader)?;
+        let package_length = u8::deserialize_ne(reader)?;
+
+        Ok((package_type, package_length))
+    }
 }
 
-impl TryInto<Vec<u8>> for Package {
-    type Error = anyhow::Error;
+// TODO: make this more concise
+impl<W> binserde::Serialize<W> for Package
+where
+    W: std::io::Write,
+{
+    fn serialize_ne(&self, writer: &mut W) -> std::io::Result<()> {
+        self.serialize_header(writer)?;
 
-    fn try_into(self: Self) -> anyhow::Result<Vec<u8>> {
         match self {
-            Self::ClientUpdate(pkg) => pkg.try_into(),
-            Self::AddressConfirm(pkg) => pkg.try_into(),
-            Self::PeerQuery(pkg) => pkg.try_into(),
-            Self::PeerNotFound(pkg) => pkg.try_into(),
-            Self::PeerReply(pkg) => pkg.try_into(),
-            Self::FullQuery(pkg) => pkg.try_into(),
-            Self::Login(pkg) => pkg.try_into(),
-            Self::Acknowledge(pkg) => pkg.try_into(),
-            Self::EndOfList(pkg) => pkg.try_into(),
-            Self::PeerSearch(pkg) => pkg.try_into(),
-            Self::Error(pkg) => pkg.try_into(),
+            Self::ClientUpdate(pkg) => (*pkg).serialize_ne(writer),
+            Self::AddressConfirm(pkg) => (*pkg).serialize_ne(writer),
+            Self::PeerQuery(pkg) => (*pkg).serialize_ne(writer),
+            Self::PeerNotFound(pkg) => (*pkg).serialize_ne(writer),
+            Self::PeerReply(pkg) => (*pkg).serialize_ne(writer),
+            Self::FullQuery(pkg) => (*pkg).serialize_ne(writer),
+            Self::Login(pkg) => (*pkg).serialize_ne(writer),
+            Self::Acknowledge(pkg) => (*pkg).serialize_ne(writer),
+            Self::EndOfList(pkg) => (*pkg).serialize_ne(writer),
+            Self::PeerSearch(pkg) => (*pkg).serialize_ne(writer),
+            Self::Error(pkg) => serialize_string(&pkg.message, writer),
+        }
+    }
+    fn serialize_be(&self, writer: &mut W) -> std::io::Result<()> {
+        self.serialize_header(writer)?;
+
+        match self {
+            Self::ClientUpdate(pkg) => (*pkg).serialize_be(writer),
+            Self::AddressConfirm(pkg) => (*pkg).serialize_be(writer),
+            Self::PeerQuery(pkg) => (*pkg).serialize_be(writer),
+            Self::PeerNotFound(pkg) => (*pkg).serialize_be(writer),
+            Self::PeerReply(pkg) => (*pkg).serialize_be(writer),
+            Self::FullQuery(pkg) => (*pkg).serialize_be(writer),
+            Self::Login(pkg) => (*pkg).serialize_be(writer),
+            Self::Acknowledge(pkg) => (*pkg).serialize_be(writer),
+            Self::EndOfList(pkg) => (*pkg).serialize_be(writer),
+            Self::PeerSearch(pkg) => (*pkg).serialize_be(writer),
+            Self::Error(pkg) => serialize_string(&pkg.message, writer),
+        }
+    }
+    fn serialize_le(&self, writer: &mut W) -> std::io::Result<()> {
+        self.serialize_header(writer)?;
+
+        match self {
+            Self::ClientUpdate(pkg) => (*pkg).serialize_le(writer),
+            Self::AddressConfirm(pkg) => (*pkg).serialize_le(writer),
+            Self::PeerQuery(pkg) => (*pkg).serialize_le(writer),
+            Self::PeerNotFound(pkg) => (*pkg).serialize_le(writer),
+            Self::PeerReply(pkg) => (*pkg).serialize_le(writer),
+            Self::FullQuery(pkg) => (*pkg).serialize_le(writer),
+            Self::Login(pkg) => (*pkg).serialize_le(writer),
+            Self::Acknowledge(pkg) => (*pkg).serialize_le(writer),
+            Self::EndOfList(pkg) => (*pkg).serialize_le(writer),
+            Self::PeerSearch(pkg) => (*pkg).serialize_le(writer),
+            Self::Error(pkg) => serialize_string(&pkg.message, writer),
         }
     }
 }
 
-fn array_from_string(mut input: String) -> [u8; 40] {
-    let mut buf: [u8; 40] = [0; 40];
+impl<R> binserde::Deserialize<R> for Package
+where
+    R: std::io::Read,
+{
+    fn deserialize_ne(reader: &mut R) -> std::io::Result<Self> {
+        let (package_type, package_length) = Package::deserialize_header(reader)?;
+        eprintln!(
+            "package_type: {}, package_length: {}",
+            package_type, package_length
+        );
+        let mut buffer = vec![0u8; package_length as usize];
+        reader.read_exact(&mut buffer)?;
+        eprintln!("buffer: {:?}", buffer);
+        let mut buffer = std::io::Cursor::new(buffer);
+        Ok(match package_type {
+            1 => Self::ClientUpdate(ClientUpdate::deserialize_ne(&mut buffer)?),
+            2 => Self::AddressConfirm(AddressConfirm::deserialize_ne(&mut buffer)?),
+            3 => Self::PeerQuery(PeerQuery::deserialize_ne(&mut buffer)?),
+            4 => Self::PeerNotFound(PeerNotFound::deserialize_ne(&mut buffer)?),
+            5 => Self::PeerReply(PeerReply::deserialize_ne(&mut buffer)?),
+            6 => Self::FullQuery(FullQuery::deserialize_ne(&mut buffer)?),
+            7 => Self::Login(Login::deserialize_ne(&mut buffer)?),
+            8 => Self::Acknowledge(Acknowledge::deserialize_ne(&mut buffer)?),
+            9 => Self::EndOfList(EndOfList::deserialize_ne(&mut buffer)?),
+            10 => Self::PeerSearch(PeerSearch::deserialize_ne(&mut buffer)?),
+            255 => Self::Error(Error {
+                message: deserialize_string(buffer.into_inner())?,
+            }),
 
-    input.truncate(39); // ensure we don't write over capaciry and leave one 0 byte at the end
-
-    for (i, b) in input.into_bytes().into_iter().enumerate() {
-        buf[i] = b;
+            _ => Err(std::io::ErrorKind::Other)?,
+        })
     }
+    fn deserialize_be(reader: &mut R) -> std::io::Result<Self> {
+        let (package_type, package_length) = Package::deserialize_header(reader)?;
+        eprintln!(
+            "package_type: {}, package_length: {}",
+            package_type, package_length
+        );
+        let mut buffer = vec![0u8; package_length as usize];
+        reader.read_exact(&mut buffer)?;
+        eprintln!("buffer: {:?}", buffer);
+        let mut buffer = std::io::Cursor::new(buffer);
+        Ok(match package_type {
+            1 => Self::ClientUpdate(ClientUpdate::deserialize_be(&mut buffer)?),
+            2 => Self::AddressConfirm(AddressConfirm::deserialize_be(&mut buffer)?),
+            3 => Self::PeerQuery(PeerQuery::deserialize_be(&mut buffer)?),
+            4 => Self::PeerNotFound(PeerNotFound::deserialize_be(&mut buffer)?),
+            5 => Self::PeerReply(PeerReply::deserialize_be(&mut buffer)?),
+            6 => Self::FullQuery(FullQuery::deserialize_be(&mut buffer)?),
+            7 => Self::Login(Login::deserialize_be(&mut buffer)?),
+            8 => Self::Acknowledge(Acknowledge::deserialize_be(&mut buffer)?),
+            9 => Self::EndOfList(EndOfList::deserialize_be(&mut buffer)?),
+            10 => Self::PeerSearch(PeerSearch::deserialize_be(&mut buffer)?),
+            255 => Self::Error(Error {
+                message: deserialize_string(buffer.into_inner())?,
+            }),
 
-    buf
+            _ => Err(std::io::ErrorKind::Other)?,
+        })
+    }
+    fn deserialize_le(reader: &mut R) -> std::io::Result<Self> {
+        let (package_type, package_length) = Package::deserialize_header(reader)?;
+        let mut buffer = vec![0u8; package_length as usize];
+        reader.read_exact(&mut buffer)?;
+        let mut buffer = std::io::Cursor::new(buffer);
+        Ok(match package_type {
+            1 => Self::ClientUpdate(ClientUpdate::deserialize_le(&mut buffer)?),
+            2 => Self::AddressConfirm(AddressConfirm::deserialize_le(&mut buffer)?),
+            3 => Self::PeerQuery(PeerQuery::deserialize_le(&mut buffer)?),
+            4 => Self::PeerNotFound(PeerNotFound::deserialize_le(&mut buffer)?),
+            5 => Self::PeerReply(PeerReply::deserialize_le(&mut buffer)?),
+            6 => Self::FullQuery(FullQuery::deserialize_le(&mut buffer)?),
+            7 => Self::Login(Login::deserialize_le(&mut buffer)?),
+            8 => Self::Acknowledge(Acknowledge::deserialize_le(&mut buffer)?),
+            9 => Self::EndOfList(EndOfList::deserialize_le(&mut buffer)?),
+            10 => Self::PeerSearch(PeerSearch::deserialize_le(&mut buffer)?),
+            255 => Self::Error(Error {
+                message: deserialize_string(buffer.into_inner())?,
+            }),
+
+            _ => Err(std::io::ErrorKind::Other)?,
+        })
+    }
 }
 
-fn string_from_slice(slice: &[u8]) -> anyhow::Result<String> {
-    let mut end_of_content = slice.len();
+fn string_byte_length(string: &str) -> usize {
+    (string.bytes().count() + 1).min(0xff)
+}
 
-    for (i, val) in slice.iter().enumerate() {
-        if *val == 0 {
-            end_of_content = i;
+fn serialize_string(string: &str, writer: &mut impl std::io::Write) -> std::io::Result<()> {
+    let bytes: Vec<u8> = string.bytes().take(255).collect();
+    writer.write_all(&bytes)?;
+    writer.write_all(&[0u8])
+}
 
-            break;
-        }
-    }
+fn deserialize_string(buffer: Vec<u8>) -> std::io::Result<String> {
+    let end_of_content = buffer
+        .iter()
+        .position(|x| *x == 0)
+        .unwrap_or_else(|| buffer.len());
 
-    Ok(CString::new(&slice[0..end_of_content])?.into_string()?)
+    let string = CString::new(&buffer[0..end_of_content])?
+        .into_string()
+        .map_err(|_| std::io::ErrorKind::Other)?;
+
+    Ok(string)
 }
