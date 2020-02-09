@@ -179,11 +179,23 @@ pub struct ClientUpdate {
     pub port: u16,
 }
 
+impl Into<Package> for ClientUpdate {
+    fn into(self) -> Package {
+        Package::ClientUpdate(Box::new(self))
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct AddressConfirm {
     pub ipaddress: Ipv4Addr,
+}
+
+impl Into<Package> for AddressConfirm {
+    fn into(self) -> Package {
+        Package::AddressConfirm(Box::new(self))
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
@@ -194,10 +206,22 @@ pub struct PeerQuery {
     pub version: u8,
 }
 
+impl Into<Package> for PeerQuery {
+    fn into(self) -> Package {
+        Package::PeerQuery(Box::new(self))
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct PeerNotFound {}
+
+impl Into<Package> for PeerNotFound {
+    fn into(self) -> Package {
+        Package::PeerNotFound(Box::new(self))
+    }
+}
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -213,6 +237,12 @@ pub struct PeerReply {
     pub extension: u8,
     pub pin: u16,
     pub timestamp: u32,
+}
+
+impl Into<Package> for PeerReply {
+    fn into(self) -> Package {
+        Package::PeerReply(Box::new(self))
+    }
 }
 
 impl PeerReply {
@@ -284,6 +314,12 @@ pub struct FullQuery {
     pub server_pin: u32,
 }
 
+impl Into<Package> for FullQuery {
+    fn into(self) -> Package {
+        Package::FullQuery(Box::new(self))
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
@@ -292,15 +328,33 @@ pub struct Login {
     pub server_pin: u32,
 }
 
+impl Into<Package> for Login {
+    fn into(self) -> Package {
+        Package::Login(Box::new(self))
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct Acknowledge {}
 
+impl Into<Package> for Acknowledge {
+    fn into(self) -> Package {
+        Package::Acknowledge(Box::new(self))
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct EndOfList {}
+
+impl Into<Package> for EndOfList {
+    fn into(self) -> Package {
+        Package::EndOfList(Box::new(self))
+    }
+}
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -310,11 +364,29 @@ pub struct PeerSearch {
     pub pattern: String40Bytes,
 }
 
+impl Into<Package> for PeerSearch {
+    fn into(self) -> Package {
+        Package::PeerSearch(Box::new(self))
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct Error {
     pub message: String,
+}
+
+impl Into<Package> for Error {
+    fn into(self) -> Package {
+        Package::Error(Box::new(self))
+    }
+}
+
+impl From<String> for Error {
+    fn from(string: String) -> Self {
+        Error { message: string }
+    }
 }
 
 impl std::fmt::Display for Error {
@@ -331,17 +403,17 @@ impl std::error::Error for Error {}
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub enum Package {
-    ClientUpdate(ClientUpdate),
-    AddressConfirm(AddressConfirm),
-    PeerQuery(PeerQuery),
-    PeerNotFound(PeerNotFound),
-    PeerReply(PeerReply),
-    FullQuery(FullQuery),
-    Login(Login),
-    Acknowledge(Acknowledge),
-    EndOfList(EndOfList),
-    PeerSearch(PeerSearch),
-    Error(Error),
+    ClientUpdate(Box<ClientUpdate>),
+    AddressConfirm(Box<AddressConfirm>),
+    PeerQuery(Box<PeerQuery>),
+    PeerNotFound(Box<PeerNotFound>),
+    PeerReply(Box<PeerReply>),
+    FullQuery(Box<FullQuery>),
+    Login(Box<Login>),
+    Acknowledge(Box<Acknowledge>),
+    EndOfList(Box<EndOfList>),
+    PeerSearch(Box<PeerSearch>),
+    Error(Box<Error>),
 }
 
 impl Package {
@@ -410,16 +482,16 @@ where
         self.serialize_header(writer)?;
 
         match self {
-            Self::ClientUpdate(pkg) => (*pkg).serialize_le(writer),
-            Self::AddressConfirm(pkg) => (*pkg).serialize_le(writer),
-            Self::PeerQuery(pkg) => (*pkg).serialize_le(writer),
-            Self::PeerNotFound(pkg) => (*pkg).serialize_le(writer),
-            Self::PeerReply(pkg) => (*pkg).serialize_le(writer),
-            Self::FullQuery(pkg) => (*pkg).serialize_le(writer),
-            Self::Login(pkg) => (*pkg).serialize_le(writer),
-            Self::Acknowledge(pkg) => (*pkg).serialize_le(writer),
-            Self::EndOfList(pkg) => (*pkg).serialize_le(writer),
-            Self::PeerSearch(pkg) => (*pkg).serialize_le(writer),
+            Self::ClientUpdate(pkg) => pkg.serialize_le(writer),
+            Self::AddressConfirm(pkg) => pkg.serialize_le(writer),
+            Self::PeerQuery(pkg) => pkg.serialize_le(writer),
+            Self::PeerNotFound(pkg) => pkg.serialize_le(writer),
+            Self::PeerReply(pkg) => pkg.serialize_le(writer),
+            Self::FullQuery(pkg) => pkg.serialize_le(writer),
+            Self::Login(pkg) => pkg.serialize_le(writer),
+            Self::Acknowledge(pkg) => pkg.serialize_le(writer),
+            Self::EndOfList(pkg) => pkg.serialize_le(writer),
+            Self::PeerSearch(pkg) => pkg.serialize_le(writer),
             Self::Error(pkg) => serialize_string(&pkg.message, writer),
         }
     }
@@ -439,19 +511,17 @@ where
         reader.read_exact(&mut buffer)?;
         let mut buffer = std::io::Cursor::new(buffer);
         Ok(match package_type {
-            1 => Self::ClientUpdate(ClientUpdate::deserialize_le(&mut buffer)?),
-            2 => Self::AddressConfirm(AddressConfirm::deserialize_le(&mut buffer)?),
-            3 => Self::PeerQuery(PeerQuery::deserialize_le(&mut buffer)?),
-            4 => Self::PeerNotFound(PeerNotFound::deserialize_le(&mut buffer)?),
-            5 => Self::PeerReply(PeerReply::deserialize_le(&mut buffer)?),
-            6 => Self::FullQuery(FullQuery::deserialize_le(&mut buffer)?),
-            7 => Self::Login(Login::deserialize_le(&mut buffer)?),
-            8 => Self::Acknowledge(Acknowledge::deserialize_le(&mut buffer)?),
-            9 => Self::EndOfList(EndOfList::deserialize_le(&mut buffer)?),
-            10 => Self::PeerSearch(PeerSearch::deserialize_le(&mut buffer)?),
-            255 => Self::Error(Error {
-                message: deserialize_string(buffer.into_inner())?,
-            }),
+            1 => ClientUpdate::deserialize_le(&mut buffer)?.into(),
+            2 => AddressConfirm::deserialize_le(&mut buffer)?.into(),
+            3 => PeerQuery::deserialize_le(&mut buffer)?.into(),
+            4 => PeerNotFound::deserialize_le(&mut buffer)?.into(),
+            5 => PeerReply::deserialize_le(&mut buffer)?.into(),
+            6 => FullQuery::deserialize_le(&mut buffer)?.into(),
+            7 => Login::deserialize_le(&mut buffer)?.into(),
+            8 => Acknowledge::deserialize_le(&mut buffer)?.into(),
+            9 => EndOfList::deserialize_le(&mut buffer)?.into(),
+            10 => PeerSearch::deserialize_le(&mut buffer)?.into(),
+            255 => Error::from(deserialize_string(buffer.into_inner())?).into(),
 
             _ => Err(std::io::ErrorKind::InvalidData)?,
         })
@@ -508,7 +578,15 @@ mod tests {
     }
 
     #[test]
+    fn package_size() {
+        assert_eq!(
+            std::mem::size_of::<Package>() / 8,
+            1 /* discriminant */ + 1, /* Box to the contents */
+            "`Package` has an incorrect size"
+        );
+    }
 
+    #[test]
     fn type_1() {
         let serialized: Vec<u8> = vec![
             // header:
@@ -518,11 +596,12 @@ mod tests {
             0xf0, 0x0f,
         ];
 
-        let package = Package::ClientUpdate(ClientUpdate {
+        let package = ClientUpdate {
             number: 0xff_00_f0_0f,
             pin: 0xf0_0f,
             port: 0x0f_f0,
-        });
+        }
+        .into();
 
         test_all(package, serialized);
     }
@@ -536,9 +615,10 @@ mod tests {
             0xff, 0x00, 0xf0, 0x0f,
         ];
 
-        let package = Package::AddressConfirm(AddressConfirm {
+        let package = AddressConfirm {
             ipaddress: Ipv4Addr::from([0xff, 0x00, 0xf0, 0x0f]),
-        });
+        }
+        .into();
 
         test_all(package, serialized);
     }
@@ -553,10 +633,11 @@ mod tests {
             0xf7,
         ];
 
-        let package = Package::PeerQuery(PeerQuery {
+        let package = PeerQuery {
             number: 0x11_22_33_44,
             version: 0xf7,
-        });
+        }
+        .into();
 
         test_all(package, serialized);
     }
@@ -566,7 +647,7 @@ mod tests {
     fn type_4() {
         let serialized: Vec<u8> = vec![4, 0];
 
-        let package = Package::PeerNotFound(PeerNotFound {});
+        let package = PeerNotFound {}.into();
 
         test_all(package, serialized);
     }
@@ -591,7 +672,7 @@ mod tests {
             0x14, 0x13, 0x12, 0x11,
         ];
 
-        let package = Package::PeerReply(PeerReply {
+        let package = PeerReply {
             number: 0x01_02_03_04,
             name: String::from("Test").into(),
             flags: PeerReply::flags(true),
@@ -602,7 +683,8 @@ mod tests {
             extension: 0x0e,
             pin: 0x0f_10,
             timestamp: 0x11_12_13_14,
-        });
+        }
+        .into();
 
         test_all(package, serialized);
     }
@@ -612,10 +694,11 @@ mod tests {
     fn type_6() {
         let serialized: Vec<u8> = vec![6, 5, 0x0f, 0x11, 0x22, 0x33, 0x44];
 
-        let package = Package::FullQuery(FullQuery {
+        let package = FullQuery {
             server_pin: 0x44_33_22_11,
             version: 0x0f,
-        });
+        }
+        .into();
 
         test_all(package, serialized);
     }
@@ -625,10 +708,11 @@ mod tests {
     fn type_7() {
         let serialized: Vec<u8> = vec![7, 5, 0x0f, 0x11, 0x22, 0x33, 0x44];
 
-        let package = Package::Login(Login {
+        let package = Login {
             server_pin: 0x44_33_22_11,
             version: 0x0f,
-        });
+        }
+        .into();
 
         test_all(package, serialized);
     }
@@ -638,7 +722,7 @@ mod tests {
     fn type_8() {
         let serialized: Vec<u8> = vec![8, 0];
 
-        let package = Package::Acknowledge(Acknowledge {});
+        let package = Acknowledge {}.into();
 
         test_all(package, serialized);
     }
@@ -648,7 +732,7 @@ mod tests {
     fn type_9() {
         let serialized: Vec<u8> = vec![9, 0];
 
-        let package = Package::EndOfList(EndOfList {});
+        let package = EndOfList {}.into();
 
         test_all(package, serialized);
     }
@@ -664,10 +748,11 @@ mod tests {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
 
-        let package = Package::PeerSearch(PeerSearch {
+        let package = PeerSearch {
             pattern: String::from("Pattern").into(),
             version: 0xf0,
-        });
+        }
+        .into();
 
         test_all(package, serialized);
     }
@@ -682,9 +767,10 @@ mod tests {
             100, 33, 0,
         ];
 
-        let package = Package::Error(Error {
+        let package = Error {
             message: String::from("An Error has occured!"),
-        });
+        }
+        .into();
 
         test_all(package, serialized);
     }
