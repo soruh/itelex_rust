@@ -1,16 +1,16 @@
 use super::{ClientType, Package, String40Bytes};
 use std::net::Ipv4Addr;
 
-pub const LENGTH_TYPE_1: usize = 8;
-pub const LENGTH_TYPE_2: usize = 4;
-pub const LENGTH_TYPE_3: usize = 5;
-pub const LENGTH_TYPE_4: usize = 0;
-pub const LENGTH_TYPE_5: usize = 100;
-pub const LENGTH_TYPE_6: usize = 5;
-pub const LENGTH_TYPE_7: usize = 5;
-pub const LENGTH_TYPE_8: usize = 0;
-pub const LENGTH_TYPE_9: usize = 0;
-pub const LENGTH_TYPE_10: usize = 41;
+pub const LENGTH_CLIENT_UPDATE: usize = 8;
+pub const LENGTH_ADDRESS_CONFIRM: usize = 4;
+pub const LENGTH_END: usize = 5;
+pub const LENGTH_PEER_NOT_FOUND: usize = 0;
+pub const LENGTH_PEER_REPLY: usize = 100;
+pub const LENGTH_FULL_QUERY: usize = 5;
+pub const LENGTH_LOGIN: usize = 5;
+pub const LENGTH_ACKNOWLEDGE: usize = 0;
+pub const LENGTH_END_OF_LIST: usize = 0;
+pub const LENGTH_PEER_SEARCH: usize = 41;
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -21,11 +21,7 @@ pub struct ClientUpdate {
     pub port: u16,
 }
 
-impl Into<Package> for ClientUpdate {
-    fn into(self) -> Package {
-        Package::ClientUpdate(Box::new(self))
-    }
-}
+derive_into_for_package!(ClientUpdate);
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -34,11 +30,7 @@ pub struct AddressConfirm {
     pub ipaddress: Ipv4Addr,
 }
 
-impl Into<Package> for AddressConfirm {
-    fn into(self) -> Package {
-        Package::AddressConfirm(Box::new(self))
-    }
-}
+derive_into_for_package!(AddressConfirm);
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -48,22 +40,14 @@ pub struct PeerQuery {
     pub version: u8,
 }
 
-impl Into<Package> for PeerQuery {
-    fn into(self) -> Package {
-        Package::PeerQuery(Box::new(self))
-    }
-}
+derive_into_for_package!(PeerQuery);
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct PeerNotFound {}
 
-impl Into<Package> for PeerNotFound {
-    fn into(self) -> Package {
-        Package::PeerNotFound(Box::new(self))
-    }
-}
+derive_into_for_package!(PeerNotFound);
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -81,11 +65,7 @@ pub struct PeerReply {
     pub timestamp: u32,
 }
 
-impl Into<Package> for PeerReply {
-    fn into(self) -> Package {
-        Package::PeerReply(Box::new(self))
-    }
-}
+derive_into_for_package!(PeerReply);
 
 impl PeerReply {
     pub fn extension_as_str(&self) -> Result<String, u8> {
@@ -156,11 +136,7 @@ pub struct FullQuery {
     pub server_pin: u32,
 }
 
-impl Into<Package> for FullQuery {
-    fn into(self) -> Package {
-        Package::FullQuery(Box::new(self))
-    }
-}
+derive_into_for_package!(FullQuery);
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -170,33 +146,21 @@ pub struct Login {
     pub server_pin: u32,
 }
 
-impl Into<Package> for Login {
-    fn into(self) -> Package {
-        Package::Login(Box::new(self))
-    }
-}
+derive_into_for_package!(Login);
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct Acknowledge {}
 
-impl Into<Package> for Acknowledge {
-    fn into(self) -> Package {
-        Package::Acknowledge(Box::new(self))
-    }
-}
+derive_into_for_package!(Acknowledge);
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct EndOfList {}
 
-impl Into<Package> for EndOfList {
-    fn into(self) -> Package {
-        Package::EndOfList(Box::new(self))
-    }
-}
+derive_into_for_package!(EndOfList);
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -206,11 +170,7 @@ pub struct PeerSearch {
     pub pattern: String40Bytes,
 }
 
-impl Into<Package> for PeerSearch {
-    fn into(self) -> Package {
-        Package::PeerSearch(Box::new(self))
-    }
-}
+derive_into_for_package!(PeerSearch);
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -219,11 +179,7 @@ pub struct Error {
     pub message: String,
 }
 
-impl Into<Package> for Error {
-    fn into(self) -> Package {
-        Package::Error(Box::new(self))
-    }
-}
+derive_into_for_package!(Error);
 
 impl From<String> for Error {
     fn from(string: String) -> Self {

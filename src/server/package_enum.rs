@@ -1,4 +1,5 @@
 use super::{packages::*, Deserialize, Serialize};
+use crate::{deserialize_string, serialize_string, string_byte_length};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -35,21 +36,19 @@ impl Package {
     }
 
     pub fn package_length(&self) -> u8 {
-        let res = match self {
-            Self::ClientUpdate(_) => LENGTH_TYPE_1,
-            Self::AddressConfirm(_) => LENGTH_TYPE_2,
-            Self::PeerQuery(_) => LENGTH_TYPE_3,
-            Self::PeerNotFound(_) => LENGTH_TYPE_4,
-            Self::PeerReply(_) => LENGTH_TYPE_5,
-            Self::FullQuery(_) => LENGTH_TYPE_6,
-            Self::Login(_) => LENGTH_TYPE_7,
-            Self::Acknowledge(_) => LENGTH_TYPE_8,
-            Self::EndOfList(_) => LENGTH_TYPE_9,
-            Self::PeerSearch(_) => LENGTH_TYPE_10,
+        (match self {
+            Self::ClientUpdate(_) => LENGTH_CLIENT_UPDATE,
+            Self::AddressConfirm(_) => LENGTH_ADDRESS_CONFIRM,
+            Self::PeerQuery(_) => LENGTH_END,
+            Self::PeerNotFound(_) => LENGTH_PEER_NOT_FOUND,
+            Self::PeerReply(_) => LENGTH_PEER_REPLY,
+            Self::FullQuery(_) => LENGTH_FULL_QUERY,
+            Self::Login(_) => LENGTH_LOGIN,
+            Self::Acknowledge(_) => LENGTH_ACKNOWLEDGE,
+            Self::EndOfList(_) => LENGTH_END_OF_LIST,
+            Self::PeerSearch(_) => LENGTH_PEER_SEARCH,
             Self::Error(val) => string_byte_length(&val.message),
-        };
-
-        res as u8
+        }) as u8
     }
 
     pub fn serialize_header(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
@@ -127,25 +126,4 @@ where
             _ => Err(std::io::ErrorKind::InvalidData)?,
         })
     }
-}
-
-fn string_byte_length(string: &str) -> usize {
-    (string.bytes().count() + 1).min(0xff)
-}
-
-fn serialize_string(string: &str, writer: &mut impl std::io::Write) -> std::io::Result<()> {
-    let bytes: Vec<u8> = string.bytes().take(255).collect();
-    writer.write_all(&bytes)?;
-    writer.write_all(&[0u8])
-}
-
-fn deserialize_string(buffer: Vec<u8>) -> std::io::Result<String> {
-    let end_of_content = buffer
-        .iter()
-        .position(|x| *x == 0)
-        .unwrap_or_else(|| buffer.len());
-
-    let string = String::from_utf8_lossy(&buffer[0..end_of_content]).into();
-
-    Ok(string)
 }

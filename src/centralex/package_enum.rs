@@ -1,53 +1,25 @@
-use binserde::{Deserialize, Serialize};
-use crate::{deserialize_string, serialize_string, string_byte_length};
-
-pub const LENGTH_END: usize = 0;
-
-#[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
-#[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
-#[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct End {}
-
-derive_into_for_package!(End);
+use super::*;
+use crate::{serialize_string, deserialize_string, string_byte_length};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct Reject {
-    pub message: String,
-}
-
-
-impl From<String> for Reject {
-    fn from(string: String) -> Self {
-        Reject { message: string }
-    }
-}
-
-impl std::fmt::Display for Reject {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl std::error::Error for Reject {}
-
-derive_into_for_package!(Reject);
-
-#[derive(Debug, Eq, PartialEq, Clone)]
-#[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
-#[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-#[non_exhaustive] // TODO: remove once complete
 pub enum Package {
+    RemConnect(Box<RemConnect>),
+    RemConfirm(Box<RemConfirm>),
+    RemCall(Box<RemCall>),
+    RemAck(Box<RemAck>),
     End(Box<End>),
     Reject(Box<Reject>),
-    // TODO
 }
-
 
 impl Package {
     pub fn package_type(&self) -> u8 {
         match self {
+            Self::RemConnect(_) => 129,
+            Self::RemConfirm(_) => 130,
+            Self::RemCall(_) => 131,
+            Self::RemAck(_) => 132,
             Self::End(_) => 3,
             Self::Reject(_) => 4,
         }
@@ -55,8 +27,12 @@ impl Package {
 
     pub fn package_length(&self) -> u8 {
         (match self {
+            Self::RemConnect(_) => LENGTH_REM_CONNECT,
+            Self::RemConfirm(_) => LENGTH_REM_CONFIRM,
+            Self::RemCall(_) => LENGTH_REM_CALL,
+            Self::RemAck(_) => LENGTH_REM_ACK,
             Self::End(_) => LENGTH_END,
-            Self::Reject(val) => string_byte_length(&val.message),
+            Self::Reject(pkg) => string_byte_length(&pkg.message),
         }) as u8
     }
 
@@ -80,7 +56,6 @@ impl Package {
     }
 }
 
-
 impl<W> binserde::Serialize<W> for Package
 where
     W: std::io::Write,
@@ -92,6 +67,10 @@ where
         self.serialize_header(writer)?;
 
         match self {
+            Self::RemConnect(pkg) => pkg.serialize_le(writer),
+            Self::RemConfirm(pkg) => pkg.serialize_le(writer),
+            Self::RemCall(pkg) => pkg.serialize_le(writer),
+            Self::RemAck(pkg) => pkg.serialize_le(writer),
             Self::End(pkg) => pkg.serialize_le(writer),
             Self::Reject(pkg) => serialize_string(&pkg.message, writer),
         }
@@ -112,6 +91,10 @@ where
         reader.read_exact(&mut buffer)?;
         let mut buffer = std::io::Cursor::new(buffer);
         Ok(match package_type {
+            129 => RemConnect::deserialize_le(&mut buffer)?.into(),
+            130 => RemConfirm::deserialize_le(&mut buffer)?.into(),
+            131 => RemCall::deserialize_le(&mut buffer)?.into(),
+            132 => RemAck::deserialize_le(&mut buffer)?.into(),
             3 => End::deserialize_le(&mut buffer)?.into(),
             4 => Reject::from(deserialize_string(buffer.into_inner())?).into(),
 

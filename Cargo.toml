@@ -1,6 +1,6 @@
 [package]
 name = "itelex"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["soruh <mail@soruh.de>"]
 edition = "2018"
 
@@ -12,8 +12,7 @@ binserde = { version = "0.1.1", git = "https://github.com/soruh/binserde" }
 binserde-derive = { version = "0.1.1", git = "https://github.com/soruh/binserde" }
 
 [features]
-# TODO: remove
-default = ["server"]
+default = ["server", "client", "centralex"]
 
 client = []
 centralex = []
