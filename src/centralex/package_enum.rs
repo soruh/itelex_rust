@@ -16,10 +16,10 @@ pub enum Package {
 impl Package {
     pub fn package_type(&self) -> u8 {
         match self {
-            Self::RemConnect(_) => 129,
-            Self::RemConfirm(_) => 130,
-            Self::RemCall(_) => 131,
-            Self::RemAck(_) => 132,
+            Self::RemConnect(_) => 0x81,
+            Self::RemConfirm(_) => 0x82,
+            Self::RemCall(_) => 0x83,
+            Self::RemAck(_) => 0x84,
             Self::End(_) => 3,
             Self::Reject(_) => 4,
         }

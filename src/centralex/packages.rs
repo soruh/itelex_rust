@@ -5,7 +5,7 @@ derive_into_for_package!(Reject);
 
 pub const LENGTH_REM_CONNECT: usize = 6;
 pub const LENGTH_REM_CONFIRM: usize = 0;
-pub const LENGTH_REM_CALL: usize = 0;
+pub const LENGTH_REM_CALL: usize = 20;
 pub const LENGTH_REM_ACK: usize = 0;
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
