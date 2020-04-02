@@ -1,5 +1,5 @@
 use super::*;
-use crate::{serialize_string, deserialize_string, string_byte_length};
+use crate::{deserialize_string, serialize_string, string_byte_length};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]

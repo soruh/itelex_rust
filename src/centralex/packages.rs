@@ -28,7 +28,9 @@ derive_into_for_package!(RemConfirm);
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
-pub struct RemCall {}
+pub struct RemCall {
+    remote_ip: std::net::Ipv4Addr,
+}
 
 derive_into_for_package!(RemCall);
 
