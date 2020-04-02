@@ -29,7 +29,8 @@ derive_into_for_package!(RemConfirm);
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct RemCall {
-    remote_ip: std::net::Ipv4Addr,
+    remote_ip_v4: std::net::Ipv4Addr,
+    remote_ip_v6: std::net::Ipv6Addr,
 }
 
 derive_into_for_package!(RemCall);
