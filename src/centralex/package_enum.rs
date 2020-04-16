@@ -5,12 +5,12 @@ use crate::{deserialize_string, serialize_string, string_byte_length};
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub enum Package {
-    RemConnect(Box<RemConnect>),
-    RemConfirm(Box<RemConfirm>),
-    RemCall(Box<RemCall>),
-    RemAck(Box<RemAck>),
-    End(Box<End>),
-    Reject(Box<Reject>),
+    RemConnect(RemConnect),
+    RemConfirm(RemConfirm),
+    RemCall(RemCall),
+    RemAck(RemAck),
+    End(End),
+    Reject(Reject),
 }
 
 impl Package {

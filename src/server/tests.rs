@@ -22,15 +22,6 @@ fn test_all(package: Package, serialized: Vec<u8>) {
 }
 
 #[test]
-fn package_size() {
-    assert_eq!(
-        std::mem::size_of::<Package>() / 8,
-        1 /* discriminant */ + 1, /* Box to the contents */
-        "`Package` has an incorrect size"
-    );
-}
-
-#[test]
 fn type_1() {
     let serialized: Vec<u8> = vec![
         // header:

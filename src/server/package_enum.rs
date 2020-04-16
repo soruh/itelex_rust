@@ -5,17 +5,17 @@ use crate::{deserialize_string, serialize_string, string_byte_length};
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub enum Package {
-    ClientUpdate(Box<ClientUpdate>),
-    AddressConfirm(Box<AddressConfirm>),
-    PeerQuery(Box<PeerQuery>),
-    PeerNotFound(Box<PeerNotFound>),
-    PeerReply(Box<PeerReply>),
-    FullQuery(Box<FullQuery>),
-    Login(Box<Login>),
-    Acknowledge(Box<Acknowledge>),
-    EndOfList(Box<EndOfList>),
-    PeerSearch(Box<PeerSearch>),
-    Error(Box<Error>),
+    ClientUpdate(ClientUpdate),
+    AddressConfirm(AddressConfirm),
+    PeerQuery(PeerQuery),
+    PeerNotFound(PeerNotFound),
+    PeerReply(PeerReply),
+    FullQuery(FullQuery),
+    Login(Login),
+    Acknowledge(Acknowledge),
+    EndOfList(EndOfList),
+    PeerSearch(PeerSearch),
+    Error(Error),
 }
 
 impl Package {

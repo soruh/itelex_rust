@@ -2,12 +2,11 @@ macro_rules! derive_into_for_package {
     ($package_name: ident) => {
         impl Into<Package> for $package_name {
             fn into(self) -> Package {
-                Package::$package_name(Box::new(self))
+                Package::$package_name(self)
             }
         }
     };
 }
-
 
 pub fn string_byte_length(string: &str) -> usize {
     (string.bytes().count() + 1).min(0xff)
@@ -29,7 +28,6 @@ pub fn deserialize_string(buffer: Vec<u8>) -> std::io::Result<String> {
 
     Ok(string)
 }
-
 
 #[cfg(feature = "client")]
 pub mod client;

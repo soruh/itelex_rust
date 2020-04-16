@@ -39,8 +39,8 @@ derive_into_for_package!(Reject);
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 #[non_exhaustive] // TODO: remove once complete
 pub enum Package {
-    End(Box<End>),
-    Reject(Box<Reject>),
+    End(End),
+    Reject(Reject),
     // TODO
 }
 
