@@ -1,5 +1,5 @@
-use binserde::{Deserialize, Serialize};
 use crate::{deserialize_string, serialize_string, string_byte_length};
+use binserde::{Deserialize, Serialize};
 
 pub const LENGTH_END: usize = 0;
 
@@ -7,6 +7,13 @@ pub const LENGTH_END: usize = 0;
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct End {}
+
+pub const LENGTH_HEARTBEAT: usize = 0;
+
+#[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
+#[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
+pub struct Heartbeat {}
 
 derive_into_for_package!(End);
 
@@ -16,7 +23,6 @@ derive_into_for_package!(End);
 pub struct Reject {
     pub message: String,
 }
-
 
 impl From<String> for Reject {
     fn from(string: String) -> Self {
@@ -41,13 +47,14 @@ derive_into_for_package!(Reject);
 pub enum Package {
     End(End),
     Reject(Reject),
+    Heartbeat(Heartbeat),
     // TODO
 }
-
 
 impl Package {
     pub fn package_type(&self) -> u8 {
         match self {
+            Self::Heartbeat(_) => 0,
             Self::End(_) => 3,
             Self::Reject(_) => 4,
         }
@@ -55,6 +62,7 @@ impl Package {
 
     pub fn package_length(&self) -> u8 {
         (match self {
+            Self::Heartbeat(_) => LENGTH_HEARTBEAT,
             Self::End(_) => LENGTH_END,
             Self::Reject(val) => string_byte_length(&val.message),
         }) as u8
@@ -80,7 +88,6 @@ impl Package {
     }
 }
 
-
 impl<W> binserde::Serialize<W> for Package
 where
     W: std::io::Write,
@@ -92,6 +99,7 @@ where
         self.serialize_header(writer)?;
 
         match self {
+            Self::Heartbeat(pkg) => pkg.serialize_le(writer),
             Self::End(pkg) => pkg.serialize_le(writer),
             Self::Reject(pkg) => serialize_string(&pkg.message, writer),
         }

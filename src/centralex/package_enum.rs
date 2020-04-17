@@ -11,6 +11,7 @@ pub enum Package {
     RemAck(RemAck),
     End(End),
     Reject(Reject),
+    Heartbeat(Heartbeat),
 }
 
 impl Package {
@@ -20,6 +21,7 @@ impl Package {
             Self::RemConfirm(_) => 0x82,
             Self::RemCall(_) => 0x83,
             Self::RemAck(_) => 0x84,
+            Self::Heartbeat(_) => 0,
             Self::End(_) => 3,
             Self::Reject(_) => 4,
         }
@@ -31,6 +33,7 @@ impl Package {
             Self::RemConfirm(_) => LENGTH_REM_CONFIRM,
             Self::RemCall(_) => LENGTH_REM_CALL,
             Self::RemAck(_) => LENGTH_REM_ACK,
+            Self::Heartbeat(_) => LENGTH_HEARTBEAT,
             Self::End(_) => LENGTH_END,
             Self::Reject(pkg) => string_byte_length(&pkg.message),
         }) as u8
@@ -71,6 +74,7 @@ where
             Self::RemConfirm(pkg) => pkg.serialize_le(writer),
             Self::RemCall(pkg) => pkg.serialize_le(writer),
             Self::RemAck(pkg) => pkg.serialize_le(writer),
+            Self::Heartbeat(pkg) => pkg.serialize_le(writer),
             Self::End(pkg) => pkg.serialize_le(writer),
             Self::Reject(pkg) => serialize_string(&pkg.message, writer),
         }

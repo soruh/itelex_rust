@@ -1,4 +1,4 @@
-pub use super::client::{End, Reject, LENGTH_END};
+pub use super::client::{End, Heartbeat, Reject, LENGTH_END, LENGTH_HEARTBEAT};
 use binserde::{Deserialize, Serialize};
 
 pub mod packages;
