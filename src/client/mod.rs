@@ -8,6 +8,8 @@ pub const LENGTH_END: usize = 0;
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct End {}
 
+derive_into_for_package!(End);
+
 pub const LENGTH_HEARTBEAT: usize = 0;
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
@@ -15,7 +17,7 @@ pub const LENGTH_HEARTBEAT: usize = 0;
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct Heartbeat {}
 
-derive_into_for_package!(End);
+derive_into_for_package!(Heartbeat);
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -120,6 +122,7 @@ where
         reader.read_exact(&mut buffer)?;
         let mut buffer = std::io::Cursor::new(buffer);
         Ok(match package_type {
+            0 => Heartbeat::deserialize_le(&mut buffer)?.into(),
             3 => End::deserialize_le(&mut buffer)?.into(),
             4 => Reject::from(deserialize_string(buffer.into_inner())?).into(),
 

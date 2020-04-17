@@ -2,6 +2,7 @@ use super::*;
 
 derive_into_for_package!(End);
 derive_into_for_package!(Reject);
+derive_into_for_package!(Heartbeat);
 
 pub const LENGTH_REM_CONNECT: usize = 6;
 pub const LENGTH_REM_CONFIRM: usize = 0;

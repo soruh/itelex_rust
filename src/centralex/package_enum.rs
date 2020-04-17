@@ -99,6 +99,7 @@ where
             130 => RemConfirm::deserialize_le(&mut buffer)?.into(),
             131 => RemCall::deserialize_le(&mut buffer)?.into(),
             132 => RemAck::deserialize_le(&mut buffer)?.into(),
+            0 => Heartbeat::deserialize_le(&mut buffer)?.into(),
             3 => End::deserialize_le(&mut buffer)?.into(),
             4 => Reject::from(deserialize_string(buffer.into_inner())?).into(),
 
