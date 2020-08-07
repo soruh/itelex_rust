@@ -28,18 +28,14 @@ impl<T> Package<T> {
     fn new<P: PackageTrait + 'static>(pkg: P) -> Self {
         Package(Box::new(pkg), Default::default())
     }
-}
-
-impl<T> std::ops::Deref for Package<T> {
-    type Target = Box<dyn Any>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    fn downcast_ref<P: PackageTrait + Any>(&self) -> Option<&P> {
+        self.0.downcast_ref::<P>()
     }
-}
-
-impl<T> std::ops::DerefMut for Package<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+    fn downcast_mut<P: PackageTrait + Any>(&mut self) -> Option<&mut P> {
+        self.0.downcast_mut::<P>()
+    }
+    fn is<P: PackageTrait + Any>(&self) -> bool {
+        self.0.is::<P>()
     }
 }
 
@@ -136,16 +132,6 @@ macro_rules! package {
                 }
             }
         )*
-    };
-}
-
-macro_rules! derive_into_for_package {
-    ($package_name: ident) => {
-        impl Into<Package> for $package_name {
-            fn into(self) -> Package {
-                Package::$package_name(self)
-            }
-        }
     };
 }
 
