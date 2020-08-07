@@ -1,23 +1,26 @@
-use super::*;
+use super::{packages::*, ClientType, Package, Server};
 use std::io::Cursor;
 use std::net::Ipv4Addr;
 
-fn test_all(package: Package, serialized: Vec<u8>) {
+fn test_all<P: super::PackageBody<Class = Server>>(package: P, serialized: Vec<u8>) {
     {
         let mut cursor = Cursor::new(serialized.clone());
         assert_eq!(
-            Package::deserialize_le(&mut cursor).expect("Package::deserialize_le failed"),
-            package,
-            "deserialize_le created unexpected result"
+            Package::<Server>::deserialize(&mut cursor)
+                .expect("Package::<Server>::deserialize failed")
+                .downcast_ref::<P>(),
+            Some(&package),
+            "deserialize created unexpected result"
         );
 
         let mut res = Vec::with_capacity(serialized.len());
 
         package
-            .serialize_le(&mut res)
-            .expect("package.serialize_le failed");
+            .to_package()
+            .serialize(&mut res)
+            .expect("package.serialize failed");
 
-        assert_eq!(res, serialized, "serialize_le created unexpected result");
+        assert_eq!(res, serialized, "serialize created unexpected result");
     }
 }
 
@@ -35,8 +38,7 @@ fn type_1() {
         number: 0xff_00_f0_0f,
         pin: 0xf0_0f,
         port: 0x0f_f0,
-    }
-    .into();
+    };
 
     test_all(package, serialized);
 }
@@ -52,8 +54,7 @@ fn type_2() {
 
     let package = AddressConfirm {
         ipaddress: Ipv4Addr::from([0xff, 0x00, 0xf0, 0x0f]),
-    }
-    .into();
+    };
 
     test_all(package, serialized);
 }
@@ -71,8 +72,7 @@ fn type_3() {
     let package = PeerQuery {
         number: 0x11_22_33_44,
         version: 0xf7,
-    }
-    .into();
+    };
 
     test_all(package, serialized);
 }
@@ -82,7 +82,7 @@ fn type_3() {
 fn type_4() {
     let serialized: Vec<u8> = vec![4, 0];
 
-    let package = PeerNotFound {}.into();
+    let package = PeerNotFound {};
 
     test_all(package, serialized);
 }
@@ -118,8 +118,7 @@ fn type_5() {
         extension: 0x0e,
         pin: 0x0f_10,
         timestamp: 0x11_12_13_14,
-    }
-    .into();
+    };
 
     test_all(package, serialized);
 }
@@ -132,8 +131,7 @@ fn type_6() {
     let package = FullQuery {
         server_pin: 0x44_33_22_11,
         version: 0x0f,
-    }
-    .into();
+    };
 
     test_all(package, serialized);
 }
@@ -146,8 +144,7 @@ fn type_7() {
     let package = Login {
         server_pin: 0x44_33_22_11,
         version: 0x0f,
-    }
-    .into();
+    };
 
     test_all(package, serialized);
 }
@@ -157,7 +154,7 @@ fn type_7() {
 fn type_8() {
     let serialized: Vec<u8> = vec![8, 0];
 
-    let package = Acknowledge {}.into();
+    let package = Acknowledge {};
 
     test_all(package, serialized);
 }
@@ -167,7 +164,7 @@ fn type_8() {
 fn type_9() {
     let serialized: Vec<u8> = vec![9, 0];
 
-    let package = EndOfList {}.into();
+    let package = EndOfList {};
 
     test_all(package, serialized);
 }
@@ -186,8 +183,7 @@ fn type_10() {
     let package = PeerSearch {
         pattern: String::from("Pattern").into(),
         version: 0xf0,
-    }
-    .into();
+    };
 
     test_all(package, serialized);
 }
@@ -204,8 +200,7 @@ fn type_255() {
 
     let package = Error {
         message: String::from("An Error has occured!"),
-    }
-    .into();
+    };
 
     test_all(package, serialized);
 }

@@ -1,4 +1,4 @@
-use super::{ClientType, Package, String40Bytes};
+use super::{ClientType, String40Bytes};
 use std::net::Ipv4Addr;
 
 pub const LENGTH_CLIENT_UPDATE: usize = 8;
@@ -21,16 +21,12 @@ pub struct ClientUpdate {
     pub port: u16,
 }
 
-derive_into_for_package!(ClientUpdate);
-
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct AddressConfirm {
     pub ipaddress: Ipv4Addr,
 }
-
-derive_into_for_package!(AddressConfirm);
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -40,14 +36,10 @@ pub struct PeerQuery {
     pub version: u8,
 }
 
-derive_into_for_package!(PeerQuery);
-
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct PeerNotFound {}
-
-derive_into_for_package!(PeerNotFound);
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -64,8 +56,6 @@ pub struct PeerReply {
     pub pin: u16,
     pub timestamp: u32,
 }
-
-derive_into_for_package!(PeerReply);
 
 impl PeerReply {
     pub fn extension_as_str(&self) -> Result<String, u8> {
@@ -136,8 +126,6 @@ pub struct FullQuery {
     pub server_pin: u32,
 }
 
-derive_into_for_package!(FullQuery);
-
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
@@ -146,21 +134,15 @@ pub struct Login {
     pub server_pin: u32,
 }
 
-derive_into_for_package!(Login);
-
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct Acknowledge {}
 
-derive_into_for_package!(Acknowledge);
-
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct EndOfList {}
-
-derive_into_for_package!(EndOfList);
 
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
@@ -170,16 +152,12 @@ pub struct PeerSearch {
     pub pattern: String40Bytes,
 }
 
-derive_into_for_package!(PeerSearch);
-
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
 pub struct Error {
     pub message: String,
 }
-
-derive_into_for_package!(Error);
 
 impl From<String> for Error {
     fn from(string: String) -> Self {
@@ -194,3 +172,29 @@ impl std::fmt::Display for Error {
 }
 
 impl std::error::Error for Error {}
+
+impl<W: std::io::Write> binserde::Serialize<W> for Error {
+    fn serialize_ne(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(self.message.as_bytes())?;
+        writer.write_all(&[0])?;
+
+        Ok(())
+    }
+}
+impl<R: std::io::Read> binserde::Deserialize<R> for Error {
+    fn deserialize_ne(reader: &mut R) -> std::io::Result<Self> {
+        let mut buffer = Vec::new();
+        loop {
+            let byte = u8::deserialize_ne(reader)?;
+
+            if byte != 0 {
+                buffer.push(byte);
+            } else {
+                return Ok(Error {
+                    message: String::from_utf8(buffer)
+                        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?,
+                });
+            }
+        }
+    }
+}

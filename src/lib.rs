@@ -1,17 +1,35 @@
 use core::any::Any;
 
+pub trait Class {}
+
 #[derive(Debug, Copy, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 struct Header {
     package_type: u8,
     package_length: u8,
 }
 
-// This trait is not object safe! Use Any
-pub trait PackageTrait
+#[cfg(all(feature = "serde_serialize", feature = "serde_deserialize"))]
+pub trait AdditionalPackageBodyBounds: serde::Serialize + serde::Deserialize {}
+#[cfg(all(feature = "serde_serialize", not(feature = "serde_deserialize")))]
+pub trait AdditionalPackageBodyBounds: serde::Serialize {}
+#[cfg(all(not(feature = "serde_serialize"), feature = "serde_deserialize"))]
+pub trait AdditionalPackageBodyBounds: serde::Deserialize {}
+#[cfg(not(any(feature = "serde_serialize", feature = "serde_deserialize")))]
+pub trait SerdeBounds {}
+
+impl<T: PackageBody> SerdeBounds for T {}
+
+pub trait PackageBody
 where
-    Self: Sized,
+    Self: Sized
+        + std::fmt::Debug
+        + std::cmp::Eq
+        + std::cmp::PartialEq
+        + Clone
+        + 'static
+        + SerdeBounds,
 {
-    type Class;
+    type Class: Class;
     fn to_package(self) -> Package<Self::Class>
     where
         Self: 'static,
@@ -24,17 +42,17 @@ where
 }
 pub struct Package<T>(Box<dyn Any>, std::marker::PhantomData<T>);
 
-impl<T> Package<T> {
-    fn new<P: PackageTrait + 'static>(pkg: P) -> Self {
+impl<T: Class> Package<T> {
+    pub fn new<P: PackageBody<Class = T> + 'static>(pkg: P) -> Self {
         Package(Box::new(pkg), Default::default())
     }
-    fn downcast_ref<P: PackageTrait + Any>(&self) -> Option<&P> {
+    pub fn downcast_ref<P: PackageBody + Any>(&self) -> Option<&P> {
         self.0.downcast_ref::<P>()
     }
-    fn downcast_mut<P: PackageTrait + Any>(&mut self) -> Option<&mut P> {
+    pub fn downcast_mut<P: PackageBody + Any>(&mut self) -> Option<&mut P> {
         self.0.downcast_mut::<P>()
     }
-    fn is<P: PackageTrait + Any>(&self) -> bool {
+    pub fn is<P: PackageBody + Any>(&self) -> bool {
         self.0.is::<P>()
     }
 }
@@ -48,9 +66,9 @@ impl std::fmt::Display for NotAPackage {
     }
 }
 
-macro_rules! package {
+macro_rules! package_class {
     ($class: ident, $($package_name: ident = $discriminant: literal,)*) => {
-        use crate::{Package, PackageTrait, Header, NotAPackage};
+        use crate::{Package, PackageBody, Header, NotAPackage, Class};
         use binserde::{Deserialize, Serialize};
 
         use std::convert::{TryInto, TryFrom};
@@ -61,6 +79,7 @@ macro_rules! package {
             $($package_name = $discriminant,)*
         }
 
+        impl Class for $class {}
 
         impl Package<$class> {
             pub fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
@@ -106,7 +125,7 @@ macro_rules! package {
 
         impl TryFrom<u8> for $class {
             type Error = ();
-            fn try_from(discriminant: u8) -> Result<Self, Self::Error> {
+            fn try_from(discriminant: u8) -> Result<Self, <Self as TryFrom<u8>>::Error> {
                 match discriminant {
                     $($discriminant => Ok($class::$package_name),)*
                     _ => Err(())
@@ -115,7 +134,7 @@ macro_rules! package {
         }
 
         $(
-            impl PackageTrait for $package_name {
+            impl PackageBody for $package_name {
                 type Class = $class;
                 fn package_type(&self) -> Self::Class {
                     $class::$package_name
