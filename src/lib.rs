@@ -9,11 +9,11 @@ struct Header {
 }
 
 #[cfg(all(feature = "serde_serialize", feature = "serde_deserialize"))]
-pub trait AdditionalPackageBodyBounds: serde::Serialize + serde::Deserialize {}
+pub trait SerdeBounds: serde::Serialize<'static> + serde::Deserialize<'static> {}
 #[cfg(all(feature = "serde_serialize", not(feature = "serde_deserialize")))]
-pub trait AdditionalPackageBodyBounds: serde::Serialize {}
+pub trait SerdeBounds: serde::Serialize<'static> {}
 #[cfg(all(not(feature = "serde_serialize"), feature = "serde_deserialize"))]
-pub trait AdditionalPackageBodyBounds: serde::Deserialize {}
+pub trait SerdeBounds: serde::Deserialize<'static> {}
 #[cfg(not(any(feature = "serde_serialize", feature = "serde_deserialize")))]
 pub trait SerdeBounds {}
 
