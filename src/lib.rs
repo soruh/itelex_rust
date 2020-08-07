@@ -1,3 +1,126 @@
+use core::any::Any;
+
+#[derive(Debug, Copy, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
+struct Header {
+    package_type: u8,
+    package_length: u8,
+}
+
+// This trait is not object safe! Use Any
+pub trait PackageTrait
+where
+    Self: Sized,
+{
+    type Class;
+    fn to_any<'pkg>(self) -> Box<dyn Any + 'pkg>
+    where
+        Self: 'pkg,
+    {
+        Box::new(self)
+    }
+    fn package_type(&self) -> Self::Class;
+    fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()>;
+    fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Self>;
+}
+pub struct Package<T>(Box<dyn Any>, std::marker::PhantomData<T>);
+
+#[derive(Copy, Clone, Debug)]
+pub struct NotAPackage;
+impl std::error::Error for NotAPackage {}
+impl std::fmt::Display for NotAPackage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+macro_rules! package {
+    ($class: ident, $($package_name: ident = $discriminant: literal,)*) => {
+        use crate::{Package, PackageTrait, Header, NotAPackage};
+        use binserde::{Deserialize, Serialize};
+        use core::any::Any;
+        use std::convert::{TryInto, TryFrom};
+
+        #[repr(u8)]
+        #[derive(Copy, Clone, Eq, PartialEq)]
+        pub enum $class {
+            $($package_name = $discriminant,)*
+        }
+
+
+        impl Package<$class> {
+            fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
+                $(
+                    if let Some(pkg) = self.0.downcast_ref::<$package_name>() {
+                        let mut buffer = Vec::new();
+                        pkg.serialize(&mut buffer)?;
+
+                        Header {
+                            package_type: pkg.package_type() as u8,
+                            package_length: buffer.len() as u8,
+                        }.serialize_ne(writer)?;
+
+                        writer.write_all(&buffer)?;
+
+                        return Ok(());
+                    }
+                )*
+
+                return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, NotAPackage));
+            }
+            fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Self> {
+                let header = Header::deserialize_ne(reader)?;
+                let mut buffer = vec![0; header.package_length as usize];
+
+                reader.read_exact(&mut buffer)?;
+
+                match header.package_type.try_into().map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, NotAPackage))? {
+                    $($class::$package_name => {
+
+                    })*
+                }
+
+
+                return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, NotAPackage));
+            }
+        }
+
+        impl Into<u8> for $class {
+            fn into(self) -> u8 {
+                self as u8
+            }
+        }
+
+        impl TryFrom<u8> for $class {
+            type Error = ();
+            fn try_from(discriminant: u8) -> Result<Self, Self::Error> {
+                match discriminant {
+                    $($discriminant => Ok($class::$package_name),)*
+                    _ => Err(())
+                }
+            }
+        }
+
+        $(
+            impl PackageTrait for $package_name {
+                type Class = $class;
+                fn package_type(&self) -> Self::Class {
+                    $class::$package_name
+                }
+                fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
+                    use binserde::Serialize;
+
+                    self.serialize_le(writer)
+                }
+                fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Self> {
+                    use binserde::Deserialize;
+
+                    $package_name::deserialize_le(reader)
+                }
+            }
+        )*
+    };
+}
+
 macro_rules! derive_into_for_package {
     ($package_name: ident) => {
         impl Into<Package> for $package_name {
