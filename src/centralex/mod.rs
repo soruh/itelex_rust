@@ -16,7 +16,7 @@ package! {Centralex,
 
 #[test]
 fn construct_package() {
-    let mut package = RemAck {}.to_any();
+    let mut package = RemAck {}.to_package();
 
     package.downcast_mut::<RemAck>().unwrap();
 }

@@ -12,11 +12,11 @@ where
     Self: Sized,
 {
     type Class;
-    fn to_any<'pkg>(self) -> Box<dyn Any + 'pkg>
+    fn to_package(self) -> Package<Self::Class>
     where
-        Self: 'pkg,
+        Self: 'static,
     {
-        Box::new(self)
+        Package::new(self)
     }
     fn package_type(&self) -> Self::Class;
     fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()>;
@@ -24,8 +24,27 @@ where
 }
 pub struct Package<T>(Box<dyn Any>, std::marker::PhantomData<T>);
 
+impl<T> Package<T> {
+    fn new<P: PackageTrait + 'static>(pkg: P) -> Self {
+        Package(Box::new(pkg), Default::default())
+    }
+}
+
+impl<T> std::ops::Deref for Package<T> {
+    type Target = Box<dyn Any>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> std::ops::DerefMut for Package<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
-pub struct NotAPackage;
+struct NotAPackage;
 impl std::error::Error for NotAPackage {}
 impl std::fmt::Display for NotAPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -37,7 +56,7 @@ macro_rules! package {
     ($class: ident, $($package_name: ident = $discriminant: literal,)*) => {
         use crate::{Package, PackageTrait, Header, NotAPackage};
         use binserde::{Deserialize, Serialize};
-        
+
         use std::convert::{TryInto, TryFrom};
 
         #[repr(u8)]
@@ -48,7 +67,7 @@ macro_rules! package {
 
 
         impl Package<$class> {
-            fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
+            pub fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
                 $(
                     if let Some(pkg) = self.0.downcast_ref::<$package_name>() {
                         let mut buffer = Vec::new();
@@ -67,7 +86,7 @@ macro_rules! package {
 
                 return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, NotAPackage));
             }
-            fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Self> {
+            pub fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Self> {
                 let header = Header::deserialize_ne(reader)?;
                 let mut buffer = vec![0; header.package_length as usize];
 
@@ -75,12 +94,11 @@ macro_rules! package {
 
                 match header.package_type.try_into().map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidInput, NotAPackage))? {
                     $($class::$package_name => {
-
+                        $package_name::deserialize(&mut std::io::Cursor::new(buffer)).map(Package::new)
                     })*
                 }
 
 
-                return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, NotAPackage));
             }
         }
 
@@ -131,17 +149,20 @@ macro_rules! derive_into_for_package {
     };
 }
 
-pub fn string_byte_length(string: &str) -> usize {
+pub(crate) fn string_byte_length(string: &str) -> usize {
     (string.bytes().count() + 1).min(0xff)
 }
 
-pub fn serialize_string(string: &str, writer: &mut impl std::io::Write) -> std::io::Result<()> {
+pub(crate) fn serialize_string(
+    string: &str,
+    writer: &mut impl std::io::Write,
+) -> std::io::Result<()> {
     let bytes: Vec<u8> = string.bytes().take(255).collect();
     writer.write_all(&bytes)?;
     writer.write_all(&[0u8])
 }
 
-pub fn deserialize_string(buffer: Vec<u8>) -> std::io::Result<String> {
+pub(crate) fn deserialize_string(buffer: Vec<u8>) -> std::io::Result<String> {
     let end_of_content = buffer
         .iter()
         .position(|x| *x == 0)
@@ -160,5 +181,3 @@ pub mod server;
 
 #[cfg(feature = "centralex")]
 pub mod centralex;
-
-pub use binserde::{Deserialize, Serialize};
