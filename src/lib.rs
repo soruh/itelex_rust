@@ -37,7 +37,7 @@ macro_rules! package {
     ($class: ident, $($package_name: ident = $discriminant: literal,)*) => {
         use crate::{Package, PackageTrait, Header, NotAPackage};
         use binserde::{Deserialize, Serialize};
-        use core::any::Any;
+        
         use std::convert::{TryInto, TryFrom};
 
         #[repr(u8)]
@@ -73,7 +73,7 @@ macro_rules! package {
 
                 reader.read_exact(&mut buffer)?;
 
-                match header.package_type.try_into().map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, NotAPackage))? {
+                match header.package_type.try_into().map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidInput, NotAPackage))? {
                     $($class::$package_name => {
 
                     })*
