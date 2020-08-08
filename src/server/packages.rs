@@ -85,7 +85,7 @@ impl PeerReply {
         }
     }
 
-    pub fn hostname<'s>(&'s self) -> Option<&'s str> {
+    pub fn hostname(&self) -> Option<&str> {
         if self.hostname.0.is_empty() {
             None
         } else {
@@ -93,7 +93,7 @@ impl PeerReply {
         }
     }
 
-    pub fn hostname_mut<'s>(&'s mut self) -> Option<&'s mut str> {
+    pub fn hostname_mut(&mut self) -> Option<&mut str> {
         if self.hostname.0.is_empty() {
             None
         } else {
@@ -101,7 +101,7 @@ impl PeerReply {
         }
     }
 
-    pub fn ipaddress<'s>(&'s self) -> Option<&'s Ipv4Addr> {
+    pub fn ipaddress(&self) -> Option<&Ipv4Addr> {
         if self.ipaddress.is_broadcast() {
             None
         } else {
@@ -109,7 +109,7 @@ impl PeerReply {
         }
     }
 
-    pub fn ipaddress_mut<'s>(&'s mut self) -> Option<&'s mut Ipv4Addr> {
+    pub fn ipaddress_mut(&mut self) -> Option<&mut Ipv4Addr> {
         if self.ipaddress.is_broadcast() {
             None
         } else {
