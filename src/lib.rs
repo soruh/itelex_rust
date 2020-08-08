@@ -38,7 +38,7 @@ where
     }
     fn package_type(&self) -> Self::Class;
     fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()>;
-    fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Self>;
+    fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Option<Self>>;
 }
 pub struct Package<T>(Box<dyn Any>, std::marker::PhantomData<T>);
 
@@ -82,25 +82,17 @@ macro_rules! package_class {
         impl Class for $class {}
 
         impl Package<$class> {
+
             pub fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
                 $(
                     if let Some(pkg) = self.0.downcast_ref::<$package_name>() {
-                        let mut buffer = Vec::new();
-                        pkg.serialize(&mut buffer)?;
-
-                        Header {
-                            package_type: pkg.package_type() as u8,
-                            package_length: buffer.len() as u8,
-                        }.serialize_ne(writer)?;
-
-                        writer.write_all(&buffer)?;
-
-                        return Ok(());
+                        return pkg.serialize(writer);
                     }
                 )*
 
                 return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, NotAPackage));
             }
+
             pub fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Self> {
                 let header = Header::deserialize_ne(reader)?;
                 let mut buffer = vec![0; header.package_length as usize];
@@ -109,11 +101,9 @@ macro_rules! package_class {
 
                 match header.package_type.try_into().map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidInput, NotAPackage))? {
                     $($class::$package_name => {
-                        $package_name::deserialize(&mut std::io::Cursor::new(buffer)).map(Package::new)
+                        $package_name::deserialize_le(&mut std::io::Cursor::new(buffer)).map(Package::new)
                     })*
                 }
-
-
             }
         }
 
@@ -139,15 +129,34 @@ macro_rules! package_class {
                 fn package_type(&self) -> Self::Class {
                     $class::$package_name
                 }
+                /// Serializes the whole package (including the header)
                 fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
                     use binserde::Serialize;
 
-                    self.serialize_le(writer)
-                }
-                fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Self> {
-                    use binserde::Deserialize;
+                    let mut buffer = Vec::new();
+                    self.serialize_le(&mut buffer)?;
 
-                    $package_name::deserialize_le(reader)
+                    Header {
+                        package_type: self.package_type() as u8,
+                        package_length: buffer.len() as u8,
+                    }.serialize_le(writer)?;
+
+                    writer.write_all(&buffer)?;
+
+                    Ok(())
+                }
+                fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Option<Self>> {
+                    let header = Header::deserialize_le(reader)?;
+                    let mut buffer = vec![0; header.package_length as usize];
+
+                    reader.read_exact(&mut buffer)?;
+
+                    let package_type: $class = header.package_type.try_into().map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidInput, NotAPackage))?;
+                    if package_type == $class::$package_name {
+                        $package_name::deserialize_le(&mut std::io::Cursor::new(buffer)).map(Some)
+                    } else {
+                        Ok(None)
+                    }
                 }
             }
         )*
