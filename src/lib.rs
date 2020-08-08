@@ -25,6 +25,7 @@ pub trait PackageBody
 where
     Self: Sized
         + Any
+        + Send
         + std::fmt::Debug
         + std::cmp::Eq
         + std::cmp::PartialEq
@@ -47,7 +48,7 @@ where
     fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Option<Self>>;
 }
 pub struct Package<T> {
-    inner: Box<dyn Any>,
+    inner: Box<dyn Any + Send>,
     package_type: T,
 }
 
@@ -72,10 +73,7 @@ impl<C: Class> Package<C> {
 
     pub fn downcast<P: PackageBody<Class = C>>(self) -> Option<Box<P>> {
         if self.package_type == P::VARIANT {
-            Some(
-                std::boxed::Box::<(dyn std::any::Any + 'static)>::downcast::<P>(self.inner)
-                    .unwrap(),
-            )
+            Some(std::boxed::Box::<(dyn Any + Send)>::downcast::<P>(self.inner).unwrap())
         } else {
             None
         }

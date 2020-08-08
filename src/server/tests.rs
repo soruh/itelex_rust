@@ -54,6 +54,19 @@ fn test_downcast() {
 }
 
 #[test]
+fn packages_are_send() {
+    let package: Package<Server> = ClientUpdate {
+        number: 0xff_00_f0_0f,
+        pin: 0xf0_0f,
+        port: 0x0f_f0,
+    }
+    .into();
+
+    fn assert_send<T: Send>(_: T) {}
+    assert_send(package);
+}
+
+#[test]
 fn type_1() {
     let serialized: Vec<u8> = vec![
         // header:
