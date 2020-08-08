@@ -1,5 +1,5 @@
 package_class! {
-    Server,
+    Server("Server"),
     ClientUpdate = 0x01,
     AddressConfirm = 0x02,
     PeerQuery = 0x03,

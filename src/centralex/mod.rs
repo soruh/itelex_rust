@@ -2,7 +2,7 @@ pub mod packages;
 
 pub use packages::*;
 
-package_class! {Centralex,
+package_class! {Centralex("Centralex"),
     Heartbeat = 0x00,
     End = 0x03,
     Reject = 0x04,

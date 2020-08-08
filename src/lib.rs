@@ -1,6 +1,8 @@
 use core::any::Any;
 
-pub trait Class: PartialEq + Copy {}
+pub trait Class: PartialEq + Copy {
+    const NAME: &'static str;
+}
 
 #[derive(Debug, Copy, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 struct Header {
@@ -31,15 +33,16 @@ where
         + SerdeBounds,
 {
     type Class: Class;
-    #[allow(non_upper_case_globals)]
-    const Variant: Self::Class;
+    const VARIANT: Self::Class;
     fn to_package(self) -> Package<Self::Class>
     where
         Self: 'static,
     {
         Package::new(self)
     }
-    fn package_type(&self) -> Self::Class;
+    fn package_type(&self) -> Self::Class {
+        Self::VARIANT
+    }
     fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()>;
     fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Option<Self>>;
 }
@@ -61,21 +64,21 @@ impl<C: Class> Package<C> {
     }
 
     pub fn downcast_ref<P: PackageBody<Class = C>>(&self) -> Option<&P> {
-        if self.package_type == P::Variant {
+        if self.package_type == P::VARIANT {
             Some(self.inner.downcast_ref::<P>().unwrap())
         } else {
             None
         }
     }
     pub fn downcast_mut<P: PackageBody<Class = C>>(&mut self) -> Option<&mut P> {
-        if self.package_type == P::Variant {
+        if self.package_type == P::VARIANT {
             Some(self.inner.downcast_mut::<P>().unwrap())
         } else {
             None
         }
     }
     pub fn is<P: PackageBody<Class = C>>(&self) -> bool {
-        self.package_type == P::Variant
+        self.package_type == P::VARIANT
     }
 
     pub fn raw_downcast_ref<P: PackageBody>(&self) -> Option<&P> {
@@ -99,7 +102,7 @@ impl std::fmt::Display for NotAPackage {
 }
 
 macro_rules! package_class {
-    ($class: ident, $($package_name: ident = $discriminant: literal,)*) => {
+    ($class:ident ( $name:literal ), $($package_name:ident = $discriminant:literal,)*) => {
         use crate::{Package, PackageBody, Header, NotAPackage, Class};
         use binserde::{Deserialize};
 
@@ -111,7 +114,9 @@ macro_rules! package_class {
             $($package_name = $discriminant,)*
         }
 
-        impl Class for $class {}
+        impl Class for $class {
+            const NAME: &'static str = $name;
+        }
 
         impl Package<$class> {
             pub fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
@@ -170,15 +175,26 @@ macro_rules! package_class {
         )*
 
 
+        impl std::fmt::Debug for Package<$class> {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                let name = format!("Package<{}>", $class::NAME);
+                let mut struct_debugger = f.debug_tuple(&name);
+                match self.package_type() {
+                    $($class::$package_name => {
+                        struct_debugger.field(self.downcast_ref::<$package_name>().unwrap());
+                    })*
+                }
+
+                struct_debugger.finish()
+            }
+        }
+
+
+
         $(
             impl PackageBody for $package_name {
                 type Class = $class;
-                #[allow(non_upper_case_globals)]
-                const Variant: $class = $class::$package_name;
-                fn package_type(&self) -> Self::Class {
-                    $class::$package_name
-                }
-                /// Serializes the whole package (including the header)
+                const VARIANT: $class = $class::$package_name;
                 fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
                     use binserde::Serialize;
 

@@ -56,7 +56,7 @@ impl std::fmt::Display for Reject {
 impl std::error::Error for Reject {}
 
 #[non_exhaustive] // TODO: remove once complete
-package_class! {Client,
+package_class! {Client("Client"),
     Heartbeat = 0x00,
     End = 0x03,
     Reject = 0x04,
