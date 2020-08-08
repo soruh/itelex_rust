@@ -70,6 +70,16 @@ impl<C: Class> Package<C> {
         self.package_type
     }
 
+    pub fn downcast<P: PackageBody<Class = C>>(self) -> Option<Box<P>> {
+        if self.package_type == P::VARIANT {
+            Some(
+                std::boxed::Box::<(dyn std::any::Any + 'static)>::downcast::<P>(self.inner)
+                    .unwrap(),
+            )
+        } else {
+            None
+        }
+    }
     pub fn downcast_ref<P: PackageBody<Class = C>>(&self) -> Option<&P> {
         if self.package_type == P::VARIANT {
             Some(self.inner.downcast_ref::<P>().unwrap())

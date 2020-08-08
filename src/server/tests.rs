@@ -40,6 +40,20 @@ fn test_debug_package() {
 }
 
 #[test]
+fn test_downcast() {
+    let mut package: Package<Server> = ClientUpdate {
+        number: 0xff_00_f0_0f,
+        pin: 0xf0_0f,
+        port: 0x0f_f0,
+    }
+    .into();
+
+    assert!(package.downcast_ref::<ClientUpdate>().is_some());
+    assert!(package.downcast_mut::<ClientUpdate>().is_some());
+    assert!(package.downcast::<ClientUpdate>().is_some());
+}
+
+#[test]
 fn type_1() {
     let serialized: Vec<u8> = vec![
         // header:
