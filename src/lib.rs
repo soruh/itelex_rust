@@ -59,6 +59,13 @@ impl<C: Class> Package<C> {
         }
     }
 
+    pub fn from_box<P: PackageBody<Class = C> + 'static>(pkg: Box<P>) -> Self {
+        Package {
+            package_type: pkg.package_type(),
+            inner: pkg,
+        }
+    }
+
     pub fn package_type(&self) -> C {
         self.package_type
     }
@@ -163,6 +170,12 @@ macro_rules! package_class {
             impl Into<Package<$class>> for $package_name {
                 fn into(self) -> Package<$class> {
                     self.to_package()
+                }
+            }
+
+            impl From<Box<$package_name>> for Package<$class> {
+                fn from(pkg: Box<$package_name>) -> Package<$class> {
+                    Package::<$class>::from_box(pkg)
                 }
             }
 
