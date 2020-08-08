@@ -1,17 +1,6 @@
 use super::{ClientType, String40Bytes};
 use std::net::Ipv4Addr;
 
-pub const LENGTH_CLIENT_UPDATE: usize = 8;
-pub const LENGTH_ADDRESS_CONFIRM: usize = 4;
-pub const LENGTH_END: usize = 5;
-pub const LENGTH_PEER_NOT_FOUND: usize = 0;
-pub const LENGTH_PEER_REPLY: usize = 100;
-pub const LENGTH_FULL_QUERY: usize = 5;
-pub const LENGTH_LOGIN: usize = 5;
-pub const LENGTH_ACKNOWLEDGE: usize = 0;
-pub const LENGTH_END_OF_LIST: usize = 0;
-pub const LENGTH_PEER_SEARCH: usize = 41;
-
 #[derive(Debug, Eq, PartialEq, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 #[cfg_attr(feature = "serde_serialize", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde_deserialize", derive(serde::Deserialize))]
