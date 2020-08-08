@@ -1,6 +1,6 @@
 use core::any::Any;
 
-pub trait Class {}
+pub trait Class: PartialEq + Copy {}
 
 #[derive(Debug, Copy, Clone, binserde_derive::Serialize, binserde_derive::Deserialize)]
 struct Header {
@@ -22,6 +22,7 @@ impl<T: PackageBody> SerdeBounds for T {}
 pub trait PackageBody
 where
     Self: Sized
+        + Any
         + std::fmt::Debug
         + std::cmp::Eq
         + std::cmp::PartialEq
@@ -30,6 +31,8 @@ where
         + SerdeBounds,
 {
     type Class: Class;
+    #[allow(non_upper_case_globals)]
+    const Variant: Self::Class;
     fn to_package(self) -> Package<Self::Class>
     where
         Self: 'static,
@@ -40,20 +43,49 @@ where
     fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()>;
     fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Option<Self>>;
 }
-pub struct Package<T>(Box<dyn Any>, std::marker::PhantomData<T>);
+pub struct Package<T> {
+    inner: Box<dyn Any>,
+    package_type: T,
+}
 
-impl<T: Class> Package<T> {
-    pub fn new<P: PackageBody<Class = T> + 'static>(pkg: P) -> Self {
-        Package(Box::new(pkg), Default::default())
+impl<C: Class> Package<C> {
+    pub fn new<P: PackageBody<Class = C> + 'static>(pkg: P) -> Self {
+        Package {
+            package_type: pkg.package_type(),
+            inner: Box::new(pkg),
+        }
     }
-    pub fn downcast_ref<P: PackageBody + Any>(&self) -> Option<&P> {
-        self.0.downcast_ref::<P>()
+
+    pub fn package_type(&self) -> C {
+        self.package_type
     }
-    pub fn downcast_mut<P: PackageBody + Any>(&mut self) -> Option<&mut P> {
-        self.0.downcast_mut::<P>()
+
+    pub fn downcast_ref<P: PackageBody<Class = C>>(&self) -> Option<&P> {
+        if self.package_type == P::Variant {
+            Some(self.inner.downcast_ref::<P>().unwrap())
+        } else {
+            None
+        }
     }
-    pub fn is<P: PackageBody + Any>(&self) -> bool {
-        self.0.is::<P>()
+    pub fn downcast_mut<P: PackageBody<Class = C>>(&mut self) -> Option<&mut P> {
+        if self.package_type == P::Variant {
+            Some(self.inner.downcast_mut::<P>().unwrap())
+        } else {
+            None
+        }
+    }
+    pub fn is<P: PackageBody<Class = C>>(&self) -> bool {
+        self.package_type == P::Variant
+    }
+
+    pub fn raw_downcast_ref<P: PackageBody>(&self) -> Option<&P> {
+        self.inner.downcast_ref::<P>()
+    }
+    pub fn raw_downcast_mut<P: PackageBody>(&mut self) -> Option<&mut P> {
+        self.inner.downcast_mut::<P>()
+    }
+    pub fn raw_is<P: PackageBody>(&self) -> bool {
+        self.inner.is::<P>()
     }
 }
 
@@ -84,7 +116,7 @@ macro_rules! package_class {
         impl Package<$class> {
             pub fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
                 $(
-                    if let Some(pkg) = self.0.downcast_ref::<$package_name>() {
+                    if let Some(pkg) = self.downcast_ref::<$package_name>() {
                         return pkg.serialize(writer);
                     }
                 )*
@@ -141,6 +173,8 @@ macro_rules! package_class {
         $(
             impl PackageBody for $package_name {
                 type Class = $class;
+                #[allow(non_upper_case_globals)]
+                const Variant: $class = $class::$package_name;
                 fn package_type(&self) -> Self::Class {
                     $class::$package_name
                 }
