@@ -25,6 +25,7 @@ pub trait PackageBody
 where
     Self: Sized
         + Any
+        + Sync
         + Send
         + std::fmt::Debug
         + std::cmp::Eq
@@ -48,7 +49,7 @@ where
     fn deserialize(reader: &mut impl std::io::Read) -> std::io::Result<Option<Self>>;
 }
 pub struct Package<T> {
-    inner: Box<dyn Any + Send>,
+    inner: Box<dyn Any + Send + Sync>,
     package_type: T,
 }
 

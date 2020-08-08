@@ -54,7 +54,7 @@ fn test_downcast() {
 }
 
 #[test]
-fn packages_are_send() {
+fn packages_are_send_and_sync() {
     let package: Package<Server> = ClientUpdate {
         number: 0xff_00_f0_0f,
         pin: 0xf0_0f,
@@ -62,8 +62,8 @@ fn packages_are_send() {
     }
     .into();
 
-    fn assert_send<T: Send>(_: T) {}
-    assert_send(package);
+    fn assert_send_and_sync<T: Send + Sync>(_: T) {}
+    assert_send_and_sync(package);
 }
 
 #[test]
