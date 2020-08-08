@@ -69,7 +69,7 @@ impl std::fmt::Display for NotAPackage {
 macro_rules! package_class {
     ($class: ident, $($package_name: ident = $discriminant: literal,)*) => {
         use crate::{Package, PackageBody, Header, NotAPackage, Class};
-        use binserde::{Deserialize, Serialize};
+        use binserde::{Deserialize};
 
         use std::convert::{TryInto, TryFrom};
 
@@ -82,7 +82,6 @@ macro_rules! package_class {
         impl Class for $class {}
 
         impl Package<$class> {
-
             pub fn serialize(&self, writer: &mut impl std::io::Write) -> std::io::Result<()> {
                 $(
                     if let Some(pkg) = self.0.downcast_ref::<$package_name>() {
@@ -124,6 +123,22 @@ macro_rules! package_class {
         }
 
         $(
+            impl Into<Package<$class>> for $package_name {
+                fn into(self) -> Package<$class> {
+                    self.to_package()
+                }
+            }
+
+            impl TryFrom<Package<$class>> for $package_name {
+                type Error = ();
+                fn try_from(pkg: Package<$class>) -> Result<Self, <Self as TryFrom<Package<$class>>>::Error> {
+                    pkg.downcast_ref().cloned().ok_or(())
+                }
+            }
+        )*
+
+
+        $(
             impl PackageBody for $package_name {
                 type Class = $class;
                 fn package_type(&self) -> Self::Class {
@@ -161,30 +176,6 @@ macro_rules! package_class {
             }
         )*
     };
-}
-
-pub(crate) fn string_byte_length(string: &str) -> usize {
-    (string.bytes().count() + 1).min(0xff)
-}
-
-pub(crate) fn serialize_string(
-    string: &str,
-    writer: &mut impl std::io::Write,
-) -> std::io::Result<()> {
-    let bytes: Vec<u8> = string.bytes().take(255).collect();
-    writer.write_all(&bytes)?;
-    writer.write_all(&[0u8])
-}
-
-pub(crate) fn deserialize_string(buffer: Vec<u8>) -> std::io::Result<String> {
-    let end_of_content = buffer
-        .iter()
-        .position(|x| *x == 0)
-        .unwrap_or_else(|| buffer.len());
-
-    let string = String::from_utf8_lossy(&buffer[0..end_of_content]).into();
-
-    Ok(string)
 }
 
 #[cfg(feature = "client")]
